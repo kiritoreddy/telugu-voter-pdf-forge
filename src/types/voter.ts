@@ -26,4 +26,6 @@ export interface VoterFormData {
 
 export interface AppSettings {
   pdfHeader: string;
+  pdfSubHeader: string;
+  pdfPageTitle: string;
 }

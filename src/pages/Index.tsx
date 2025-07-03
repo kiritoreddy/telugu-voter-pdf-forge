@@ -14,7 +14,9 @@ const Index = () => {
   const [voters, setVoters] = useState<Voter[]>([]);
   const [activeTab, setActiveTab] = useState('form');
   const [settings, setSettings] = useState<AppSettings>({
-    pdfHeader: 'Dharmasagar Cooperative Housing Society Limited, Nizamabad'
+    pdfHeader: 'Dharmasagar Cooperative Housing Society Limited, Nizamabad',
+    pdfSubHeader: 'For the year 2025', // Or whatever default you want
+    pdfPageTitle: 'Voters Register',   // Or whatever default you want
   });
   const [editingVoter, setEditingVoter] = useState<Voter | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -60,7 +62,12 @@ const Index = () => {
     }
 
     try {
-      await generatePDF(voters, settings.pdfHeader);
+      await generatePDF(
+        voters, 
+        settings.pdfHeader, 
+        settings.pdfPageTitle, 
+        settings.pdfSubHeader
+      );
       toast({
         title: "Success!",
         description: "PDF generated successfully",
