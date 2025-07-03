@@ -21,7 +21,7 @@ export const generatePDF = async (voters: Voter[], settings: AppSettings): Promi
   // Layout configuration
   const VOTERS_PER_ROW = 2;
   const headerHeight = 30;
-  const footerHeight = 20;
+  const footerHeight = 25; // Increased for custom footer blocks
   const availableHeight = pageHeight - headerHeight - footerHeight - (margin * 2);
   const rowHeight = 42;
   const ROWS_PER_PAGE = Math.floor(availableHeight / rowHeight);
@@ -38,31 +38,38 @@ export const generatePDF = async (voters: Voter[], settings: AppSettings): Promi
     // Add header
     addHeader(pdf, settings, pageWidth);
     
-    // Get voters for this page
-    const startIndex = pageIndex * VOTERS_PER_PAGE;
-    const endIndex = Math.min(startIndex + VOTERS_PER_PAGE, voters.length);
-    const pageVoters = voters.slice(startIndex, endIndex);
-    
     // Layout settings
     const startY = headerHeight;
     const columnWidth = contentWidth / VOTERS_PER_ROW;
     
-    // Draw voters in grid layout with vertical serial numbering
-    for (let i = 0; i < pageVoters.length; i++) {
-      const voter = pageVoters[i];
-      const row = Math.floor(i / VOTERS_PER_ROW);
-      const col = i % VOTERS_PER_ROW;
+    // Draw voters in column-major order
+    for (let row = 0; row < ROWS_PER_PAGE; row++) {
+      for (let col = 0; col < VOTERS_PER_ROW; col++) {
+        // Calculate global voter index using column-major ordering
+        const index = pageIndex * VOTERS_PER_PAGE + row + col * ROWS_PER_PAGE;
+        
+        // Skip if we've run out of voters
+        if (index >= voters.length) {
+          break;
+        }
+        
+        const voter = voters[index];
+        const x = margin + (col * columnWidth);
+        const y = startY + (row * rowHeight);
+        
+        // Serial number = index + startSerial
+        const serialNo = index + settings.startSerial;
+        
+        await addVoterToGrid(pdf, voter, x, y, columnWidth, rowHeight, serialNo);
+      }
       
-      const x = margin + (col * columnWidth);
-      const y = startY + (row * rowHeight);
-      
-      // Calculate serial number (vertical ordering)
-      const serialNo = settings.startSerial + startIndex + (col * ROWS_PER_PAGE) + row;
-      
-      await addVoterToGrid(pdf, voter, x, y, columnWidth, rowHeight, serialNo);
+      // Break outer loop if we've run out of voters
+      if (pageIndex * VOTERS_PER_PAGE + row + ROWS_PER_PAGE >= voters.length) {
+        break;
+      }
     }
     
-    // Add footer
+    // Add footer with custom blocks
     addFooter(pdf, settings, pageWidth, pageHeight, currentPage, totalPages);
     currentPage++;
   }
@@ -85,28 +92,27 @@ const addHeader = (pdf: jsPDF, settings: AppSettings, pageWidth: number) => {
 };
 
 const addFooter = (pdf: jsPDF, settings: AppSettings, pageWidth: number, pageHeight: number, currentPage: number, totalPages: number) => {
-  const footerY = pageHeight - 15;
+  const margin = 10;
+  const footerStartY = pageHeight - margin - 20;
   
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(8);
   
-  // Left footer
-  let leftY = footerY;
-  settings.footerLeft.forEach((line, index) => {
-    if (line.trim()) {
-      pdf.text(line, 10, leftY + (index * 3));
+  // Left footer block (4 lines)
+  settings.footerLeft.forEach((txt, i) => {
+    if (txt && txt.trim()) {
+      pdf.text(txt, margin, footerStartY + i * 4);
     }
   });
   
-  // Right footer
-  let rightY = footerY;
-  settings.footerRight.forEach((line, index) => {
-    if (line.trim()) {
-      pdf.text(line, pageWidth - 10, rightY + (index * 3), { align: 'right' });
+  // Right footer block (4 lines)
+  settings.footerRight.forEach((txt, i) => {
+    if (txt && txt.trim()) {
+      pdf.text(txt, pageWidth - margin, footerStartY + i * 4, { align: 'right' });
     }
   });
   
-  // Page number (center)
+  // Page number centered below footer blocks
   pdf.text(`Page ${currentPage} of ${totalPages}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
 };
 
