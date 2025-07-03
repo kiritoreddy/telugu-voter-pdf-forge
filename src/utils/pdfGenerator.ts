@@ -1,219 +1,197 @@
 import jsPDF from 'jspdf';
 import { Voter, AppSettings } from '@/types/voter';
 
-// Base reference dimensions and font sizes (Legal paper as baseline)
-const BASE_WIDTH = 216;   // mm
-const BASE_HEIGHT = 356;  // mm
+/* ---------- 1 · Baseline metrics (LEGAL reference) ---------- */
+const BASE_WIDTH  = 216;   // mm
+const BASE_HEIGHT = 356;   // mm
+const BASE_ROW_HEIGHT = 28.1;           // Legal row height when 10 rows/page
 const BASE_FONT = {
-  header: 13,
-  subHeader: 10,
-  pageTitle: 10,
-  label: 8,
-  body: 8,
-  name: 8,
-  pageNum: 8,
-  footer: 8,
-  photo: 7
+  header:     13,
+  subHeader:  10,
+  pageTitle:  10,
+  label:       8,
+  body:        8,
+  name:        8,
+  footer:      8,
+  pageNum:     8,
+  photo:       7,
 };
+const MIN_FONT = 7;
 
-const MIN_FONT = 7; // Minimum readable font size
+/* ---------- 2 · Generate PDF ---------- */
+export const generatePDF = async (
+  voters: Voter[],
+  settings: AppSettings
+): Promise<void> => {
+  if (!voters.length) throw new Error('No voters to export');
 
-export const generatePDF = async (voters: Voter[], settings: AppSettings): Promise<void> => {
-  if (voters.length === 0) {
-    throw new Error('No voters to export');
-  }
+  /* 2-A. Paper & scale */
+  const paperDim = settings.pdfPaperSize === 'a4'
+    ? { width: 210, height: 297 }
+    : { width: 216, height: 356 };
+  const pdf   = new jsPDF('p', 'mm', [paperDim.width, paperDim.height]);
+  const scale = settings.pdfPaperSize === 'legal'
+    ? 1
+    : paperDim.height / BASE_HEIGHT;
 
-  const pdf = new jsPDF('p', 'mm', settings.pdfPaperSize);
-  
-  // Paper dimensions
-  const dimensions = {
-    a4: { width: 210, height: 297 },
-    legal: { width: 216, height: 356 }
-  };
-  
-  const { width: pageWidth, height: pageHeight } = dimensions[settings.pdfPaperSize];
-  
-  // Calculate scaling factor based on height (more restrictive dimension)
-  const scale = settings.pdfPaperSize === 'legal' ? 1 : (pageHeight / BASE_HEIGHT);
-  
-  // Apply scaling to all font sizes with minimum font clamping
-  const font = {
-    header: Math.max(MIN_FONT, BASE_FONT.header * scale),
-    subHeader: Math.max(MIN_FONT, BASE_FONT.subHeader * scale),
-    pageTitle: Math.max(MIN_FONT, BASE_FONT.pageTitle * scale),
-    label: Math.max(MIN_FONT, BASE_FONT.label * scale),
-    body: Math.max(MIN_FONT, BASE_FONT.body * scale),
-    name: Math.max(MIN_FONT, BASE_FONT.name * scale),
-    pageNum: Math.max(MIN_FONT, BASE_FONT.pageNum * scale),
-    footer: Math.max(MIN_FONT, BASE_FONT.footer * scale),
-    photo: Math.max(MIN_FONT, BASE_FONT.photo * scale)
-  };
-  
-  const margin = 10;
-  const contentWidth = pageWidth - (margin * 2);
-  
-  // Layout configuration - scale line heights proportionally
+  /* 2-B. Layout constants */
+  const margin        = 10;
+  const headerHeight  = 30 * scale;
+  const footerHeight  = 25 * scale;
   const VOTERS_PER_ROW = 2;
-  const headerHeight = 30 * scale;
-  const footerHeight = 25 * scale;
-  const availableHeight = pageHeight - headerHeight - footerHeight - (margin * 2);
-  const rowHeight = 42 * scale;
-  const ROWS_PER_PAGE = Math.floor(availableHeight / rowHeight);
+  const ROWS_PER_PAGE  = 10;                 // 🔒 fixed
   const VOTERS_PER_PAGE = VOTERS_PER_ROW * ROWS_PER_PAGE;
-  
+
+  const contentHeight = paperDim.height - headerHeight - footerHeight - margin * 2;
+  const rowHeight     = contentHeight / ROWS_PER_PAGE;               // auto-fit
+  const columnWidth   = (paperDim.width - margin * 2) / VOTERS_PER_ROW;
+  const lineHeight    = rowHeight / 6;                               // 5 lines + padding
+
+  /* 2-C. Scaled fonts */
+  const fontScale = rowHeight / BASE_ROW_HEIGHT;
+  const font = Object.fromEntries(
+    (Object.entries(BASE_FONT) as [keyof typeof BASE_FONT, number][])
+      .map(([k, v]) => [k, Math.max(MIN_FONT, v * fontScale)])
+  ) as Record<keyof typeof BASE_FONT, number>;
+
+  /* 2-D. Pagination */
   const totalPages = Math.ceil(voters.length / VOTERS_PER_PAGE);
-  let currentPage = 1;
+  for (let p = 0; p < totalPages; p++) {
+    if (p) pdf.addPage();
+    addHeader(pdf, settings, paperDim.width, font);
 
-  for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
-    if (pageIndex > 0) {
-      pdf.addPage();
-    }
-
-    // Add header
-    addHeader(pdf, settings, pageWidth, font);
-    
-    // Layout settings
-    const startY = headerHeight;
-    const columnWidth = contentWidth / VOTERS_PER_ROW;
-    
-    // Draw voters in column-major order
+    const startY = 5 + headerHeight;
     for (let row = 0; row < ROWS_PER_PAGE; row++) {
       for (let col = 0; col < VOTERS_PER_ROW; col++) {
-        // Calculate global voter index using column-major ordering
-        const index = pageIndex * VOTERS_PER_PAGE + row + col * ROWS_PER_PAGE;
-        
-        // Skip if we've run out of voters
-        if (index >= voters.length) {
-          break;
-        }
-        
-        const voter = voters[index];
-        const x = margin + (col * columnWidth);
-        const y = startY + (row * rowHeight);
-        
-        // Serial number = index + startSerial
-        const serialNo = index + settings.startSerial;
-        
-        await addVoterToGrid(pdf, voter, x, y, columnWidth, rowHeight, serialNo, font, scale);
-      }
-      
-      // Break outer loop if we've run out of voters
-      if (pageIndex * VOTERS_PER_PAGE + row + ROWS_PER_PAGE >= voters.length) {
-        break;
+        const idx = p * VOTERS_PER_PAGE + row + col * ROWS_PER_PAGE;
+        if (idx >= voters.length) continue;
+        await addBox(
+          pdf,
+          voters[idx],
+          margin + col * columnWidth,
+          startY + row * rowHeight,
+          columnWidth,
+          rowHeight,
+          idx + settings.startSerial,
+          font,
+          lineHeight
+        );
       }
     }
-    
-    // Add footer with custom blocks
-    addFooter(pdf, settings, pageWidth, pageHeight, currentPage, totalPages, font);
-    currentPage++;
+
+    addFooter(pdf, settings, paperDim, p + 1, totalPages, font);
   }
 
   pdf.save(`voter-list-${settings.pdfPaperSize}.pdf`);
 };
 
-const addHeader = (pdf: jsPDF, settings: AppSettings, pageWidth: number, font: any) => {
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(font.header);
+/* ---------- 3 · Helpers ---------- */
+const addHeader = (
+  pdf: jsPDF,
+  settings: AppSettings,
+  pageWidth: number,
+  f: Record<string, number>
+) => {
+  pdf.setFont('helvetica', 'bold').setFontSize(f.header);
   pdf.text(settings.pdfHeader, pageWidth / 2, 12, { align: 'center' });
 
-  pdf.setFontSize(font.pageTitle);
+  pdf.setFontSize(f.pageTitle);
   pdf.text(settings.pdfPageTitle, pageWidth / 2, 18, { align: 'center' });
-  
-  if (settings.pdfSubHeader) {
-    pdf.setFontSize(font.subHeader);
+
+  if (settings.pdfSubHeader?.trim()) {
+    pdf.setFontSize(f.subHeader);
     pdf.text(settings.pdfSubHeader, pageWidth / 2, 24, { align: 'center' });
   }
 };
 
-const addFooter = (pdf: jsPDF, settings: AppSettings, pageWidth: number, pageHeight: number, currentPage: number, totalPages: number, font: any) => {
-  const margin = 10;
-  const footerStartY = pageHeight - margin - 20;
-  
-  pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(font.footer);
-  
-  // Left footer block (4 lines)
-  settings.footerLeft.forEach((txt, i) => {
-    if (txt && txt.trim()) {
-      pdf.text(txt, margin, footerStartY + i * 4);
-    }
+const addFooter = (
+  pdf: jsPDF,
+  settings: AppSettings,
+  dim: { width: number; height: number },
+  pageNo: number,
+  total: number,
+  f: Record<string, number>
+) => {
+  const y0 = dim.height - 30;
+  pdf.setFont('helvetica', 'normal').setFontSize(f.footer);
+
+  settings.footerLeft.forEach((txt, i) =>
+    txt?.trim() && pdf.text(txt, 10, y0 + i * 4)
+  );
+  settings.footerRight.forEach((txt, i) =>
+    txt?.trim() &&
+    pdf.text(txt, dim.width - 10, y0 + i * 4, { align: 'right' })
+  );
+
+  pdf.setFontSize(f.pageNum);
+  pdf.text(`Page ${pageNo} of ${total}`, dim.width / 2, dim.height - 5, {
+    align: 'center',
   });
-  
-  // Right footer block (4 lines)
-  settings.footerRight.forEach((txt, i) => {
-    if (txt && txt.trim()) {
-      pdf.text(txt, pageWidth - margin, footerStartY + i * 4, { align: 'right' });
-    }
-  });
-  
-  // Page number centered below footer blocks
-  pdf.setFontSize(font.pageNum);
-  pdf.text(`Page ${currentPage} of ${totalPages}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
 };
 
-const addVoterToGrid = async (pdf: jsPDF, voter: Voter, x: number, y: number, width: number, height: number, serialNo: number, font: any, scale: number) => {
-  const snoWidth = width * 0.1;
-  const photoWidth = width * 0.25;
-  const textWidth = width - snoWidth - photoWidth - 6;
+const addBox = async (
+  pdf: jsPDF,
+  v: Voter,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  slNo: number,
+  f: Record<string, number>,
+  lh: number
+) => {
+  /* borders */
+  const snoW = w * 0.1,
+    photoW = w * 0.25,
+    textW = w - snoW - photoW - 6;
+  pdf.setLineWidth(0.3).rect(x, y, w, h).rect(x, y, snoW, h);
 
-  // Draw borders
-  pdf.setLineWidth(0.3);
-  pdf.rect(x, y, width, height);
-  pdf.rect(x, y, snoWidth, height);
+  /* serial */
+  pdf.setFont('helvetica', 'bold').setFontSize(f.label);
+  pdf.text(String(slNo), x + snoW / 2, y + h / 2, { align: 'center' });
 
-  // Serial number
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(font.label);
-  pdf.text(serialNo.toString(), x + snoWidth / 2, y + height / 2, { align: 'center' });
-
-  // Photo section
-  const photoHeight = height - 4;
-  const photoX = x + width - photoWidth - 2;
-  const photoY = y + 2;
-  pdf.rect(photoX, photoY, photoWidth, photoHeight);
-
-  if (voter.photo) {
+  /* photo */
+  const pX = x + w - photoW - 2,
+    pY = y + 2,
+    pH = h - 4;
+  pdf.rect(pX, pY, photoW, pH);
+  if (v.photo) {
     try {
-      pdf.addImage(voter.photo, 'JPEG', photoX + 0.5, photoY + 0.5, photoWidth - 1, photoHeight - 1);
+      pdf.addImage(v.photo, 'JPEG', pX + 1, pY + 1, photoW - 2, pH - 2);
     } catch {
-      pdf.setFontSize(font.photo);
-      pdf.text('Photo', photoX + photoWidth / 2, photoY + photoHeight / 2, { align: 'center' });
+      pdf.setFontSize(f.photo).text('Photo', pX + photoW / 2, pY + pH / 2, {
+        align: 'center',
+      });
     }
   } else {
-    pdf.setFontSize(font.photo);
-    pdf.text('Photo', photoX + photoWidth / 2, photoY + photoHeight / 2, { align: 'center' });
+    pdf.setFontSize(f.photo).text('Photo', pX + photoW / 2, pY + pH / 2, {
+      align: 'center',
+    });
   }
 
-  // Text content with scaled line height
-  const textX = x + snoWidth + 2;
-  let textY = y + 5;
-  const lineHeight = 3.5 * scale;
+  /* text */
+  let tY = y + 5;
+  const tX = x + snoW + 2;
+  pdf.setFont('helvetica', 'normal').setFontSize(f.body);
 
-  pdf.setFontSize(font.body);
-  pdf.setFont('helvetica', 'normal');
+  pdf.text(`Entry No.: ${v.entryNumber}`, tX, tY);
+  pdf.text(`Entry Date: ${v.entryDate}`, tX + textW, tY, { align: 'right' });
+  tY += lh;
 
-  // Line 1: Entry No. and Entry Date
-  pdf.text(`Entry No.: ${voter.entryNumber}`, textX, textY);
-  pdf.text(`Entry Date: ${voter.entryDate}`, textX + textWidth, textY, { align: 'right' });
-  textY += lineHeight;
+  pdf.setFont('helvetica', 'normal').setFontSize(f.name);
+  pdf.text(`Name: ${v.name}`, tX, tY);
+  tY += lh;
 
-  // Line 2: Name
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(font.name);
-  pdf.text(`Name: ${voter.name}`, textX, textY);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(font.body);
-  textY += lineHeight;
+  pdf.setFont('helvetica', 'normal').setFontSize(f.body);
+  pdf.text(`Father/Husband Name: ${v.fatherHusbandName}`, tX, tY);
+  tY += lh;
 
-  // Line 3: Father/Husband Name
-  pdf.text(`Father/Husband Name: ${voter.fatherHusbandName}`, textX, textY);
-  textY += lineHeight;
+  pdf.text(`Village: ${v.village}`, tX, tY);
+  tY += lh;
 
-  // Line 4: Village
-  pdf.text(`Village: ${voter.village}`, textX, textY);
-  textY += lineHeight;
-
-  // Line 5: Caste, Age, Gender on one line
-  const casteAgeGender = `Caste: ${voter.caste} | Age: ${voter.age} | Gender: ${voter.gender}`;
-  pdf.text(casteAgeGender, textX, textY);
+  pdf.text(
+    `Caste: ${v.caste}  Age: ${v.age}  Gender: ${v.gender}`,
+    tX,
+    tY
+  );
 };
