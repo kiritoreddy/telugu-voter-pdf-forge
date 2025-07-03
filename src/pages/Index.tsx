@@ -1,31 +1,43 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import VoterForm from '@/components/VoterForm';
 import VoterPreview from '@/components/VoterPreview';
 import HeaderSettings from '@/components/HeaderSettings';
+import BulkUpload from '@/components/BulkUpload';
 import EditVoterDialog from '@/components/EditVoterDialog';
 import { Voter, AppSettings } from '@/types/voter';
 import { generatePDF } from '@/utils/pdfGenerator';
+import { getStoredSettings, storeSettings } from '@/utils/localStorage';
 import { toast } from '@/hooks/use-toast';
 
 const Index = () => {
   const [voters, setVoters] = useState<Voter[]>([]);
-  const [activeTab, setActiveTab] = useState('form');
-  const [settings, setSettings] = useState<AppSettings>({
-    pdfHeader: 'Dharmasagar Cooperative Housing Society Limited, Nizamabad',
-    pdfSubHeader: 'For the year 2025', // Or whatever default you want
-    pdfPageTitle: 'Voters Register',   // Or whatever default you want
-  });
+  const [activeTab, setActiveTab] = useState('settings');
+  const [settings, setSettings] = useState<AppSettings>(getStoredSettings());
   const [editingVoter, setEditingVoter] = useState<Voter | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const stored = getStoredSettings();
+    setSettings(stored);
+  }, []);
 
   const handleAddVoter = (voter: Voter) => {
     setVoters(prev => [...prev, voter]);
     toast({
       title: "Success!",
       description: "Voter added successfully",
+    });
+    setActiveTab('preview');
+  };
+
+  const handleBulkUpload = (newVoters: Voter[]) => {
+    setVoters(prev => [...prev, ...newVoters]);
+    toast({
+      title: "Success!",
+      description: `${newVoters.length} voters imported successfully`,
     });
     setActiveTab('preview');
   };
@@ -45,9 +57,10 @@ const Index = () => {
 
   const handleUpdateSettings = (newSettings: AppSettings) => {
     setSettings(newSettings);
+    storeSettings(newSettings);
     toast({
       title: "Success!",
-      description: "Header settings updated successfully",
+      description: "Settings saved successfully",
     });
   };
 
@@ -62,17 +75,13 @@ const Index = () => {
     }
 
     try {
-      await generatePDF(
-        voters, 
-        settings.pdfHeader, 
-        settings.pdfPageTitle, 
-        settings.pdfSubHeader
-      );
+      await generatePDF(voters, settings);
       toast({
         title: "Success!",
-        description: "PDF generated successfully",
+        description: `PDF generated successfully (${settings.pdfPaperSize.toUpperCase()} format)`,
       });
     } catch (error) {
+      console.error('PDF generation error:', error);
       toast({
         title: "Error",
         description: "Error generating PDF",
@@ -82,11 +91,13 @@ const Index = () => {
   };
 
   const handleClearAll = () => {
-    setVoters([]);
-    toast({
-      title: "Cleared",
-      description: "All voters have been removed",
-    });
+    if (window.confirm('Are you sure you want to remove all voters? This action cannot be undone.')) {
+      setVoters([]);
+      toast({
+        title: "Cleared",
+        description: "All voters have been removed",
+      });
+    }
   };
 
   return (
@@ -97,17 +108,20 @@ const Index = () => {
             Voter List Management System
           </h1>
           <p className="text-xl text-gray-600">
-            Voter List PDF Generator
+            Complete Voter Registration & PDF Generation Platform
           </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="settings">
               Settings
             </TabsTrigger>
             <TabsTrigger value="form">
-              Voter Details
+              Add Voter
+            </TabsTrigger>
+            <TabsTrigger value="bulk">
+              Bulk Upload
             </TabsTrigger>
             <TabsTrigger value="preview">
               Preview ({voters.length})
@@ -125,6 +139,10 @@ const Index = () => {
             <VoterForm onAddVoter={handleAddVoter} />
           </TabsContent>
 
+          <TabsContent value="bulk" className="animate-fade-in">
+            <BulkUpload onVotersUploaded={handleBulkUpload} />
+          </TabsContent>
+
           <TabsContent value="preview" className="animate-fade-in">
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -133,14 +151,14 @@ const Index = () => {
                   disabled={voters.length === 0}
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  Download PDF
+                  Download PDF ({settings.pdfPaperSize.toUpperCase()})
                 </Button>
                 <Button
                   onClick={handleClearAll}
                   variant="outline"
                   disabled={voters.length === 0}
                 >
-                  Clear All
+                  Clear All ({voters.length})
                 </Button>
               </div>
               
