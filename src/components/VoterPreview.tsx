@@ -22,12 +22,12 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({ voters }) => {
     <div className="space-y-6">
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold font-telugu mb-2">
-          ధర్మసాగర్ కోఆపరేటివ్ సొసైటీ
+          ధర్మసాగర్ కో-ఆపరేటివ్ హౌసింగ్ సొసైటీ లిమిటెడ్, నిజామాబాద్
         </h2>
-        <p className="text-lg font-telugu text-gray-700">ఓటర్ల జాబితా</p>
+        <p className="text-lg font-telugu text-gray-700">సభ్యుల జాబితా</p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4" id="voter-preview">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" id="voter-preview">
         {voters.map((voter, index) => (
           <VoterCard key={voter.id} voter={voter} index={index} />
         ))}
