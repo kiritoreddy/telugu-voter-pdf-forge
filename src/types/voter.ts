@@ -23,3 +23,7 @@ export interface VoterFormData {
   gender: 'Male' | 'Female';
   photo: File | null;
 }
+
+export interface AppSettings {
+  pdfHeader: string;
+}

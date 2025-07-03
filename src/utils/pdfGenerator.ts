@@ -1,8 +1,7 @@
-
 import jsPDF from 'jspdf';
 import { Voter } from '@/types/voter';
 
-export const generatePDF = async (voters: Voter[]) => {
+export const generatePDF = async (voters: Voter[], headerText: string) => {
   if (voters.length === 0) {
     alert('No voters to export');
     return;
@@ -30,7 +29,7 @@ export const generatePDF = async (voters: Voter[]) => {
     // Add header
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(12);
-    pdf.text('Dharmasagar Cooperative Housing Society Limited, Nizamabad', pageWidth / 2, 15, { align: 'center' });
+    pdf.text(headerText, pageWidth / 2, 15, { align: 'center' });
     pdf.setFontSize(10);
     pdf.text('Members List', pageWidth / 2, 22, { align: 'center' });
     
@@ -63,7 +62,7 @@ export const generatePDF = async (voters: Voter[]) => {
     currentPage++;
   }
 
-  pdf.save('dharmasagar-voter-list.pdf');
+  pdf.save('voter-list.pdf');
 };
 
 const addVoterToGrid = async (pdf: jsPDF, voter: Voter, x: number, y: number, width: number, height: number, serialNo: number) => {

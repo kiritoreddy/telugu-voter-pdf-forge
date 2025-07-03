@@ -1,16 +1,28 @@
 
 import React from 'react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Edit } from 'lucide-react';
 import { Voter } from '@/types/voter';
 
 interface VoterCardProps {
   voter: Voter;
   index: number;
+  onEdit: (voter: Voter) => void;
 }
 
-const VoterCard: React.FC<VoterCardProps> = ({ voter, index }) => {
+const VoterCard: React.FC<VoterCardProps> = ({ voter, index, onEdit }) => {
   return (
-    <Card className="p-0 border-2 border-gray-400 bg-white voter-card">
+    <Card className="p-0 border-2 border-gray-400 bg-white voter-card relative">
+      <Button
+        onClick={() => onEdit(voter)}
+        className="absolute top-2 right-2 z-10 h-8 w-8 p-0"
+        variant="outline"
+        size="sm"
+      >
+        <Edit className="h-4 w-4" />
+      </Button>
+      
       <div className="flex h-40">
         {/* Serial Number Column - 10% width */}
         <div className="w-[10%] border-r-2 border-gray-400 flex items-center justify-center bg-gray-50">

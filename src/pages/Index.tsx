@@ -4,13 +4,20 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import VoterForm from '@/components/VoterForm';
 import VoterPreview from '@/components/VoterPreview';
-import { Voter } from '@/types/voter';
+import HeaderSettings from '@/components/HeaderSettings';
+import EditVoterDialog from '@/components/EditVoterDialog';
+import { Voter, AppSettings } from '@/types/voter';
 import { generatePDF } from '@/utils/pdfGenerator';
 import { toast } from '@/hooks/use-toast';
 
 const Index = () => {
   const [voters, setVoters] = useState<Voter[]>([]);
   const [activeTab, setActiveTab] = useState('form');
+  const [settings, setSettings] = useState<AppSettings>({
+    pdfHeader: 'Dharmasagar Cooperative Housing Society Limited, Nizamabad'
+  });
+  const [editingVoter, setEditingVoter] = useState<Voter | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const handleAddVoter = (voter: Voter) => {
     setVoters(prev => [...prev, voter]);
@@ -19,6 +26,27 @@ const Index = () => {
       description: "Voter added successfully",
     });
     setActiveTab('preview');
+  };
+
+  const handleEditVoter = (voter: Voter) => {
+    setEditingVoter(voter);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEditedVoter = (updatedVoter: Voter) => {
+    setVoters(prev => prev.map(v => v.id === updatedVoter.id ? updatedVoter : v));
+    toast({
+      title: "Success!",
+      description: "Voter details updated successfully",
+    });
+  };
+
+  const handleUpdateSettings = (newSettings: AppSettings) => {
+    setSettings(newSettings);
+    toast({
+      title: "Success!",
+      description: "Header settings updated successfully",
+    });
   };
 
   const handleGeneratePDF = async () => {
@@ -32,7 +60,7 @@ const Index = () => {
     }
 
     try {
-      await generatePDF(voters);
+      await generatePDF(voters, settings.pdfHeader);
       toast({
         title: "Success!",
         description: "PDF generated successfully",
@@ -59,7 +87,7 @@ const Index = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">
-            Dharmasagar Cooperative Society
+            Voter List Management System
           </h1>
           <p className="text-xl text-gray-600">
             Voter List PDF Generator
@@ -67,7 +95,10 @@ const Index = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="settings">
+              Settings
+            </TabsTrigger>
             <TabsTrigger value="form">
               Voter Details
             </TabsTrigger>
@@ -75,6 +106,13 @@ const Index = () => {
               Preview ({voters.length})
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="settings" className="animate-fade-in">
+            <HeaderSettings 
+              settings={settings}
+              onUpdateSettings={handleUpdateSettings}
+            />
+          </TabsContent>
 
           <TabsContent value="form" className="animate-fade-in">
             <VoterForm onAddVoter={handleAddVoter} />
@@ -99,10 +137,24 @@ const Index = () => {
                 </Button>
               </div>
               
-              <VoterPreview voters={voters} />
+              <VoterPreview 
+                voters={voters} 
+                headerText={settings.pdfHeader}
+                onEditVoter={handleEditVoter}
+              />
             </div>
           </TabsContent>
         </Tabs>
+
+        <EditVoterDialog
+          voter={editingVoter}
+          open={isEditDialogOpen}
+          onClose={() => {
+            setIsEditDialogOpen(false);
+            setEditingVoter(null);
+          }}
+          onSave={handleSaveEditedVoter}
+        />
       </div>
     </div>
   );
