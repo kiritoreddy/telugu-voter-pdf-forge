@@ -30,9 +30,9 @@ export const generatePDF = async (voters: Voter[]) => {
     // Add header
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(12);
-    pdf.text('ధర్మసాగర్ కో-ఆపరేటివ్ హౌసింగ్ సొసైటీ లిమిటెడ్, నిజామాబాద్', pageWidth / 2, 15, { align: 'center' });
+    pdf.text('Dharmasagar Cooperative Housing Society Limited, Nizamabad', pageWidth / 2, 15, { align: 'center' });
     pdf.setFontSize(10);
-    pdf.text('సభ్యుల జాబితా', pageWidth / 2, 22, { align: 'center' });
+    pdf.text('Members List', pageWidth / 2, 22, { align: 'center' });
     
     // Get voters for this page
     const startIndex = pageIndex * VOTERS_PER_PAGE;
@@ -42,7 +42,7 @@ export const generatePDF = async (voters: Voter[]) => {
     // Layout settings
     const startY = 30;
     const columnWidth = contentWidth / 2;
-    const rowHeight = 40;
+    const rowHeight = 42;
     
     // Draw voters in grid layout
     for (let i = 0; i < pageVoters.length; i++) {
@@ -71,18 +71,18 @@ const addVoterToGrid = async (pdf: jsPDF, voter: Voter, x: number, y: number, wi
   pdf.setLineWidth(0.3);
   pdf.rect(x, y, width, height);
   
-  // Serial number column (left side)
-  const snoWidth = 8;
+  // Serial number column (left side) - 10% of width
+  const snoWidth = width * 0.1;
   pdf.rect(x, y, snoWidth, height);
   
   // Add serial number
   pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(10);
+  pdf.setFontSize(12);
   pdf.text(serialNo.toString(), x + snoWidth/2, y + height/2, { align: 'center' });
   
-  // Photo section (right side)
-  const photoWidth = 22;
-  const photoHeight = 28;
+  // Photo section (right side) - 25% of width
+  const photoWidth = width * 0.25;
+  const photoHeight = height - 4;
   const photoX = x + width - photoWidth - 1;
   const photoY = y + 2;
   
@@ -99,46 +99,68 @@ const addVoterToGrid = async (pdf: jsPDF, voter: Voter, x: number, y: number, wi
       // Add placeholder text
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(7);
-      pdf.text('ఫోటో', photoX + photoWidth/2, photoY + photoHeight/2, { align: 'center' });
+      pdf.text('Photo', photoX + photoWidth/2, photoY + photoHeight/2, { align: 'center' });
     }
   } else {
     // Add placeholder
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7);
-    pdf.text('ఫోటో', photoX + photoWidth/2, photoY + photoHeight/2, { align: 'center' });
+    pdf.text('Photo', photoX + photoWidth/2, photoY + photoHeight/2, { align: 'center' });
   }
   
-  // Text content area (middle section)
+  // Text content area (middle section) - 65% of width
   const textX = x + snoWidth + 1;
   const textWidth = width - snoWidth - photoWidth - 3;
   let textY = y + 4;
-  const lineHeight = 3.2;
+  const lineHeight = 3.5;
   
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(7);
   
-  // Voter details in proper order
-  const details = [
-    `ప్రవేశ సంఖ్యా: ${voter.entryNumber}`,
-    `ప్రవేశ తేది: ${voter.entryDate}`,
-    `పేరు: ${voter.name}`,
-    `తండ్రి/భర్త పేరు: ${voter.fatherHusbandName}`,
-    `గ్రామం: ${voter.village}`,
-    `కులం: ${voter.caste}`,
-    `వయస్సు: ${voter.age}`,
-    `లింగం: ${voter.gender}`
-  ];
+  // Line 1: Entry No. and Entry Date
+  const line1Left = `Entry No.: ${voter.entryNumber}`;
+  const line1Right = `Entry Date: ${voter.entryDate}`;
+  pdf.text(line1Left, textX, textY);
+  pdf.text(line1Right, textX + textWidth, textY, { align: 'right' });
+  textY += lineHeight;
   
-  details.forEach((detail) => {
+  // Line 2: Name (bold)
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(`Name: ${voter.name}`, textX, textY);
+  pdf.setFont('helvetica', 'normal');
+  textY += lineHeight;
+  
+  // Line 3: Father/Husband Name
+  const line3 = `Father/Husband Name: ${voter.fatherHusbandName}`;
+  const line3Lines = pdf.splitTextToSize(line3, textWidth);
+  line3Lines.forEach((line: string) => {
     if (textY < y + height - 2) {
-      // Split long text if needed
-      const textLines = pdf.splitTextToSize(detail, textWidth);
-      textLines.forEach((line: string) => {
-        if (textY < y + height - 2) {
-          pdf.text(line, textX, textY);
-          textY += lineHeight;
-        }
-      });
+      pdf.text(line, textX, textY);
+      textY += lineHeight;
     }
   });
+  
+  // Line 4: Village
+  const line4 = `Village: ${voter.village}`;
+  const line4Lines = pdf.splitTextToSize(line4, textWidth);
+  line4Lines.forEach((line: string) => {
+    if (textY < y + height - 2) {
+      pdf.text(line, textX, textY);
+      textY += lineHeight;
+    }
+  });
+  
+  // Line 5: Caste and Age
+  if (textY < y + height - 2) {
+    const line5Left = `Caste: ${voter.caste}`;
+    const line5Right = `Age: ${voter.age}`;
+    pdf.text(line5Left, textX, textY);
+    pdf.text(line5Right, textX + textWidth, textY, { align: 'right' });
+    textY += lineHeight;
+  }
+  
+  // Line 6: Gender
+  if (textY < y + height - 2) {
+    pdf.text(`Gender: ${voter.gender}`, textX, textY);
+  }
 };

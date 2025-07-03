@@ -21,7 +21,7 @@ const VoterForm: React.FC<VoterFormProps> = ({ onAddVoter }) => {
     village: '',
     caste: '',
     age: '',
-    gender: 'పురుషుడు',
+    gender: 'Male',
     photo: null,
   });
 
@@ -70,7 +70,7 @@ const VoterForm: React.FC<VoterFormProps> = ({ onAddVoter }) => {
       village: '',
       caste: '',
       age: '',
-      gender: 'పురుషుడు',
+      gender: 'Male',
       photo: null,
     });
     setPhotoPreview(null);
@@ -79,26 +79,25 @@ const VoterForm: React.FC<VoterFormProps> = ({ onAddVoter }) => {
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle className="text-2xl font-bold text-center font-telugu">
-          ఓటరు వివరాలు దర్జ్ చేయండి
+        <CardTitle className="text-2xl font-bold text-center">
+          Enter Voter Details
         </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="entryNumber" className="font-telugu">ప్రవేశ సంఖ్యా</Label>
+              <Label htmlFor="entryNumber">Entry Number</Label>
               <Input
                 id="entryNumber"
                 value={formData.entryNumber}
                 onChange={(e) => handleInputChange('entryNumber', e.target.value)}
                 required
-                className="font-telugu"
               />
             </div>
             
             <div>
-              <Label htmlFor="entryDate" className="font-telugu">ప్రవేశ తేది</Label>
+              <Label htmlFor="entryDate">Entry Date</Label>
               <Input
                 id="entryDate"
                 type="date"
@@ -110,55 +109,51 @@ const VoterForm: React.FC<VoterFormProps> = ({ onAddVoter }) => {
           </div>
 
           <div>
-            <Label htmlFor="name" className="font-telugu">పేరు</Label>
+            <Label htmlFor="name">Name</Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
               required
-              className="font-telugu"
-              placeholder="పూర్తి పేరు రాయండి"
+              placeholder="Enter full name"
             />
           </div>
 
           <div>
-            <Label htmlFor="fatherHusbandName" className="font-telugu">తండ్రి/భర్త పేరు</Label>
+            <Label htmlFor="fatherHusbandName">Father/Husband Name</Label>
             <Input
               id="fatherHusbandName"
               value={formData.fatherHusbandName}
               onChange={(e) => handleInputChange('fatherHusbandName', e.target.value)}
               required
-              className="font-telugu"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="village" className="font-telugu">గ్రామము</Label>
+              <Label htmlFor="village">Village</Label>
               <Input
                 id="village"
                 value={formData.village}
                 onChange={(e) => handleInputChange('village', e.target.value)}
                 required
-                className="font-telugu"
               />
             </div>
             
             <div>
-              <Label htmlFor="caste" className="font-telugu">కులము</Label>
+              <Label htmlFor="caste">Caste</Label>
               <Input
                 id="caste"
                 value={formData.caste}
                 onChange={(e) => handleInputChange('caste', e.target.value)}
                 required
-                className="font-telugu"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="age" className="font-telugu">వయస్సు</Label>
+              <Label htmlFor="age">Age</Label>
               <Input
                 id="age"
                 type="number"
@@ -171,21 +166,21 @@ const VoterForm: React.FC<VoterFormProps> = ({ onAddVoter }) => {
             </div>
             
             <div>
-              <Label htmlFor="gender" className="font-telugu">లింగం</Label>
-              <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value as 'పురుషుడు' | 'స్త్రీ')}>
+              <Label htmlFor="gender">Gender</Label>
+              <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value as 'Male' | 'Female')}>
                 <SelectTrigger>
-                  <SelectValue className="font-telugu" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="పురుషుడు" className="font-telugu">పురుషుడు</SelectItem>
-                  <SelectItem value="స్త్రీ" className="font-telugu">స్త్రీ</SelectItem>
+                  <SelectItem value="Male">Male</SelectItem>
+                  <SelectItem value="Female">Female</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div>
-            <Label htmlFor="photo" className="font-telugu">ఫోటో అప్‌లోడ్ చేయండి</Label>
+            <Label htmlFor="photo">Upload Photo</Label>
             <div className="mt-2">
               <input
                 id="photo"
@@ -207,15 +202,15 @@ const VoterForm: React.FC<VoterFormProps> = ({ onAddVoter }) => {
                 ) : (
                   <div className="text-center">
                     <Camera className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-500 font-telugu">ఫోటో ఎంచుకోండి</p>
+                    <p className="text-sm text-gray-500">Select Photo</p>
                   </div>
                 )}
               </label>
             </div>
           </div>
 
-          <Button type="submit" className="w-full font-telugu text-lg">
-            ఓటరును జోడించండి
+          <Button type="submit" className="w-full text-lg">
+            Add Voter
           </Button>
         </form>
       </CardContent>

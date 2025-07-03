@@ -15,8 +15,8 @@ const Index = () => {
   const handleAddVoter = (voter: Voter) => {
     setVoters(prev => [...prev, voter]);
     toast({
-      title: "విజయవంతం!",
-      description: "ఓటరు విజయవంతంగా జోడించబడ్డారు",
+      title: "Success!",
+      description: "Voter added successfully",
     });
     setActiveTab('preview');
   };
@@ -24,8 +24,8 @@ const Index = () => {
   const handleGeneratePDF = async () => {
     if (voters.length === 0) {
       toast({
-        title: "దోషం",
-        description: "PDF రూపొందించడానికి కనీసం ఒక ఓటరు అవసరం",
+        title: "Error",
+        description: "At least one voter is required to generate PDF",
         variant: "destructive",
       });
       return;
@@ -34,13 +34,13 @@ const Index = () => {
     try {
       await generatePDF(voters);
       toast({
-        title: "విజయవంతం!",
-        description: "PDF విజయవంతంగా రూపొందించబడింది",
+        title: "Success!",
+        description: "PDF generated successfully",
       });
     } catch (error) {
       toast({
-        title: "దోషం",
-        description: "PDF రూపొందించడంలో దోషం",
+        title: "Error",
+        description: "Error generating PDF",
         variant: "destructive",
       });
     }
@@ -49,8 +49,8 @@ const Index = () => {
   const handleClearAll = () => {
     setVoters([]);
     toast({
-      title: "క్లియర్ చేయబడింది",
-      description: "అన్ని ఓటర్లు తొలగించబడ్డారు",
+      title: "Cleared",
+      description: "All voters have been removed",
     });
   };
 
@@ -58,21 +58,21 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold font-telugu text-gray-800 mb-2">
-            ధర్మసాగర్ కోఆపరేటివ్ సొసైటీ
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+            Dharmasagar Cooperative Society
           </h1>
-          <p className="text-xl font-telugu text-gray-600">
-            ఓటర్ల జాబితా PDF జనరేటర్
+          <p className="text-xl text-gray-600">
+            Voter List PDF Generator
           </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="form" className="font-telugu">
-              ఓటరు వివరాలు
+            <TabsTrigger value="form">
+              Voter Details
             </TabsTrigger>
-            <TabsTrigger value="preview" className="font-telugu">
-              ప్రివ్యూ ({voters.length})
+            <TabsTrigger value="preview">
+              Preview ({voters.length})
             </TabsTrigger>
           </TabsList>
 
@@ -86,17 +86,16 @@ const Index = () => {
                 <Button
                   onClick={handleGeneratePDF}
                   disabled={voters.length === 0}
-                  className="font-telugu bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 hover:bg-green-700"
                 >
-                  PDF డౌన్‌లోడ్ చేయండి
+                  Download PDF
                 </Button>
                 <Button
                   onClick={handleClearAll}
                   variant="outline"
                   disabled={voters.length === 0}
-                  className="font-telugu"
                 >
-                  అన్నింటిని క్లియర్ చేయండి
+                  Clear All
                 </Button>
               </div>
               

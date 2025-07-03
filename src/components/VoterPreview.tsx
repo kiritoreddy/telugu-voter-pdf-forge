@@ -11,8 +11,8 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({ voters }) => {
   if (voters.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500 font-telugu text-lg">
-          ఇంకా ఓటర్లు జోడించబడలేదు
+        <p className="text-gray-500 text-lg">
+          No voters added yet
         </p>
       </div>
     );
@@ -21,10 +21,10 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({ voters }) => {
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold font-telugu mb-2">
-          ధర్మసాగర్ కో-ఆపరేటివ్ హౌసింగ్ సొసైటీ లిమిటెడ్, నిజామాబాద్
+        <h2 className="text-2xl font-bold mb-2">
+          Dharmasagar Cooperative Housing Society Limited, Nizamabad
         </h2>
-        <p className="text-lg font-telugu text-gray-700">సభ్యుల జాబితా</p>
+        <p className="text-lg text-gray-700">Members List</p>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" id="voter-preview">

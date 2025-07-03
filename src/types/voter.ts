@@ -8,7 +8,7 @@ export interface Voter {
   village: string;
   caste: string;
   age: string;
-  gender: 'పురుషుడు' | 'స్త్రీ';
+  gender: 'Male' | 'Female';
   photo: string | null;
 }
 
@@ -20,6 +20,6 @@ export interface VoterFormData {
   village: string;
   caste: string;
   age: string;
-  gender: 'పురుషుడు' | 'స్త్రీ';
+  gender: 'Male' | 'Female';
   photo: File | null;
 }
