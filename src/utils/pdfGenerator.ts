@@ -174,8 +174,8 @@ const addBox = async (
   const tX = x + snoW + 2;
   pdf.setFont('helvetica', 'normal').setFontSize(f.body);
 
-  pdf.text(`Entry No.: ${v.entryNumber}`, tX, tY);
-  pdf.text(`Entry Date: ${v.entryDate}`, tX + textW, tY, { align: 'right' });
+  pdf.text(`Admn. No: ${v.entryNumber}`, tX, tY);
+  pdf.text(`Admn. Date: ${v.entryDate}`, tX + textW, tY, { align: 'right' });
   tY += lh;
 
   pdf.setFont('helvetica', 'normal').setFontSize(f.name);
