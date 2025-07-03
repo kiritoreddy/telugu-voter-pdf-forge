@@ -172,13 +172,13 @@ const addBox = async (
   /* text */
   let tY = y + 5;
   const tX = x + snoW + 2;
-  pdf.setFont('helvetica', 'normal').setFontSize(f.body);
+  pdf.setFont('helvetica', 'bold').setFontSize(f.body);
 
   pdf.text(`Admn. No: ${v.entryNumber}`, tX, tY);
   pdf.text(`Admn. Date: ${v.entryDate}`, tX + textW, tY, { align: 'right' });
   tY += lh;
 
-  pdf.setFont('helvetica', 'normal').setFontSize(f.name);
+  pdf.setFont('helvetica', 'bold').setFontSize(f.name);
   pdf.text(`Name: ${v.name}`, tX, tY);
   tY += lh;
 

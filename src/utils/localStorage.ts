@@ -8,13 +8,13 @@ export const getStoredSettings = (): AppSettings => {
     if (stored) {
       const parsed = JSON.parse(stored);
       return {
-        pdfHeader: parsed.pdfHeader || 'Dharmasagar Cooperative Housing Society Limited, Nizamabad',
-        pdfSubHeader: parsed.pdfSubHeader || 'For the year 2025',
-        pdfPageTitle: parsed.pdfPageTitle || 'Voters Register',
+        pdfHeader: parsed.pdfHeader || '',
+        pdfSubHeader: parsed.pdfSubHeader || '______________District, Registration No:',
+        pdfPageTitle: parsed.pdfPageTitle || 'Voters list of_____________________________________________Society,___________Village,__________Mandal,',
         pdfPaperSize: parsed.pdfPaperSize || 'legal',
         startSerial: parsed.startSerial || 1,
-        footerLeft: parsed.footerLeft || ['', '', '', ''],
-        footerRight: parsed.footerRight || ['', '', '', '']
+        footerLeft: parsed.footerLeft || ['', '','Signature of the President of Incumbent Managing', 'Committee/PIC/Official Administrator/Adhoc Committee'],
+        footerRight: parsed.footerRight || ['', '', 'Signature of the Registrar', '']
       };
     }
   } catch (error) {
@@ -22,13 +22,13 @@ export const getStoredSettings = (): AppSettings => {
   }
   
   return {
-    pdfHeader: 'Dharmasagar Cooperative Housing Society Limited, Nizamabad',
-    pdfSubHeader: 'For the year 2025',
-    pdfPageTitle: 'Voters Register',
+    pdfHeader: '',
+    pdfSubHeader: '______________District, Registration No:',
+    pdfPageTitle: 'Voters list of_____________________________________________Society,___________Village,__________Mandal,',
     pdfPaperSize: 'legal',
     startSerial: 1,
-    footerLeft: ['', '', '', ''],
-    footerRight: ['', '', '', '']
+    footerLeft: ['', '','Signature of the President of Incumbent Managing', 'Committee/PIC/Official Administrator/Adhoc Committee'],
+    footerRight: ['', '', 'Signature of the Registrar', '']
   };
 };
 

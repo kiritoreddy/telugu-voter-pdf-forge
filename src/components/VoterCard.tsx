@@ -34,8 +34,8 @@ const VoterCard: React.FC<VoterCardProps> = ({ voter, index, onEdit }) => {
           <div className="space-y-1 text-sm">
             {/* Line 1: Entry No. and Entry Date */}
             <div className="flex justify-between">
-              <span><strong>Entry No.:</strong> {voter.entryNumber}</span>
-              <span><strong>Entry Date:</strong> {voter.entryDate}</span>
+              <span><strong>Admin No.:</strong> {voter.entryNumber}</span>
+              <span><strong>Admin Date:</strong> {voter.entryDate}</span>
             </div>
             
             {/* Line 2: Name */}
@@ -57,12 +57,10 @@ const VoterCard: React.FC<VoterCardProps> = ({ voter, index, onEdit }) => {
             <div className="flex justify-between">
               <span><strong>Caste:</strong> {voter.caste}</span>
               <span><strong>Age:</strong> {voter.age}</span>
-            </div>
-            
-            {/* Line 6: Gender */}
-            <div>
               <span><strong>Gender:</strong> {voter.gender}</span>
             </div>
+            
+            
           </div>
         </div>
 
