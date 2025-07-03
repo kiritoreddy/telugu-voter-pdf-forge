@@ -57,32 +57,58 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ onVotersUploaded }) => {
         'text/csv'
       ];
       
-      if (validTypes.includes(file.type)) {
-        setExcelFile(file);
-        setErrors([]);
-        setParsedVoters([]);
-      } else {
+      if (!validTypes.includes(file.type)) {
         toast({
           title: "Invalid File",
           description: "Please select a valid Excel (.xlsx) or CSV file",
           variant: "destructive",
         });
+        return;
       }
+
+      // Check if file is empty
+      if (file.size === 0) {
+        toast({
+          title: "Empty File",
+          description: "The selected file is empty. Please choose a file with data.",
+          variant: "destructive",
+        });
+        // Clear the input
+        e.target.value = '';
+        return;
+      }
+
+      setExcelFile(file);
+      setErrors([]);
+      setParsedVoters([]);
     }
   };
 
   const handlePhotosFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.type === 'application/zip' || file.name.endsWith('.zip')) {
-        setPhotosFile(file);
-      } else {
+      if (!file.type === 'application/zip' && !file.name.endsWith('.zip')) {
         toast({
           title: "Invalid File",
           description: "Please select a valid ZIP file",
           variant: "destructive",
         });
+        return;
       }
+
+      // Check if file is empty
+      if (file.size === 0) {
+        toast({
+          title: "Empty File",
+          description: "The selected ZIP file is empty. Please choose a file with photos.",
+          variant: "destructive",
+        });
+        // Clear the input
+        e.target.value = '';
+        return;
+      }
+
+      setPhotosFile(file);
     }
   };
 
