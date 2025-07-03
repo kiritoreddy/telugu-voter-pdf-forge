@@ -119,7 +119,7 @@
              {/* ---- entry number / date ---- */}
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div>
-                 <Label htmlFor="entryNumber">Entry Number</Label>
+                 <Label htmlFor="entryNumber">Admin Number</Label>
                  <Input
                    id="entryNumber"
                    value={formData.entryNumber}
@@ -131,7 +131,7 @@
                </div>
    
                <div>
-                 <Label htmlFor="entryDate">Entry Date</Label>
+                 <Label htmlFor="entryDate">Admin Date</Label>
                  <Input
                    id="entryDate"
                    type="date"
