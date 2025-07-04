@@ -166,6 +166,7 @@ const Index = () => {
                 voters={voters} 
                 headerText={settings.pdfHeader}
                 onEditVoter={handleEditVoter}
+                settings={settings}
               />
             </div>
           </TabsContent>

@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { Voter, AppSettings } from '@/types/voter';
+import { getSerialNumber, applyPhotosFirstSorting } from './serialNumberHelper';
 
 /* ---------- 1 · Baseline metrics (LEGAL reference) ---------- */
 const BASE_WIDTH  = 216;   // mm
@@ -26,10 +27,7 @@ export const generatePDF = async (
   if (!voters.length) throw new Error('No voters to export');
 
   /* 2-A. Apply photos-first sorting (same as Preview) */
-  const sortedVoters = [
-    ...voters.filter(v => v.photo),     // with photo
-    ...voters.filter(v => !v.photo),   // without photo
-  ];
+  const sortedVoters = applyPhotosFirstSorting(voters);
 
   /* 2-B. Paper & scale */
   const paperDim = settings.pdfPaperSize === 'a4'
@@ -73,6 +71,9 @@ export const generatePDF = async (
         const idx = p * VOTERS_PER_PAGE + row + col * ROWS_PER_PAGE;
         if (idx >= sortedVoters.length) continue;
         
+        // Use shared helper for consistent serial numbering
+        const serialNumber = getSerialNumber(idx, settings.startSerial);
+        
         await addBox(
           pdf,
           sortedVoters[idx],
@@ -80,7 +81,7 @@ export const generatePDF = async (
           startY + row * rowHeight,
           columnWidth,
           rowHeight,
-          idx + settings.startSerial,
+          serialNumber,
           font,
           lineHeight
         );

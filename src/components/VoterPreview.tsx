@@ -1,44 +1,48 @@
 import React, { useState, useMemo } from 'react';
 import { FixedSizeList as List } from 'react-window';
-import { Voter } from '@/types/voter';
+import { Voter, AppSettings } from '@/types/voter';
 import VoterCard from './VoterCard';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { getSerialNumber, applyPhotosFirstSorting } from '@/utils/serialNumberHelper';
 
 interface VoterPreviewProps {
   voters: Voter[];
   headerText: string;
   onEditVoter: (voter: Voter) => void;
+  settings?: AppSettings;
 }
 
 const VOTERS_PER_PAGE = 20;
 const VOTERS_PER_ROW = 2;
 
-const VoterPreview: React.FC<VoterPreviewProps> = ({ voters, headerText, onEditVoter }) => {
+const VoterPreview: React.FC<VoterPreviewProps> = ({ 
+  voters, 
+  headerText, 
+  onEditVoter, 
+  settings 
+}) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
+  const startSerial = settings?.startSerial || 1;
+
   // Photos-first sorting with search filtering
-  const sortedAndFilteredVoters = useMemo(() => {
-    // First, sort by photos-first
-    const sorted = [
-      ...voters.filter(v => v.photo),     // with photo
-      ...voters.filter(v => !v.photo),   // without photo
-    ];
+  const { sortedVoters, filteredVoters } = useMemo(() => {
+    // First, sort by photos-first (this is our canonical order)
+    const sorted = applyPhotosFirstSorting(voters);
 
     // Then apply search filter if there's a search term
-    if (searchTerm.trim()) {
-      return sorted.filter(v => 
-        v.entryNumber.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+    const filtered = searchTerm.trim()
+      ? sorted.filter(v => v.entryNumber.toLowerCase().includes(searchTerm.toLowerCase()))
+      : sorted;
 
-    return sorted;
+    return { sortedVoters: sorted, filteredVoters: filtered };
   }, [voters, searchTerm]);
 
-  const totalPages = Math.ceil(sortedAndFilteredVoters.length / VOTERS_PER_PAGE);
+  const totalPages = Math.ceil(filteredVoters.length / VOTERS_PER_PAGE);
 
   // Sort voters in column-major order (same as PDF)
   const columnMajorVoters = useMemo(() => {
@@ -47,7 +51,7 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({ voters, headerText, onEditV
     
     for (let page = 0; page < totalPages; page++) {
       const pageStart = page * VOTERS_PER_PAGE;
-      const pageVoters = sortedAndFilteredVoters.slice(pageStart, pageStart + VOTERS_PER_PAGE);
+      const pageVoters = filteredVoters.slice(pageStart, pageStart + VOTERS_PER_PAGE);
       
       // Arrange in column-major order
       for (let row = 0; row < rowsPerPage; row++) {
@@ -61,7 +65,7 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({ voters, headerText, onEditV
     }
     
     return result;
-  }, [sortedAndFilteredVoters, totalPages]);
+  }, [filteredVoters, totalPages]);
 
   const currentPageVoters = useMemo(() => {
     const startIndex = (currentPage - 1) * VOTERS_PER_PAGE;
@@ -71,17 +75,17 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({ voters, headerText, onEditV
   // Reset to page 1 when search results change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [sortedAndFilteredVoters.length]);
+  }, [filteredVoters.length]);
 
   // Auto-scroll to first match when search results change
   React.useEffect(() => {
-    if (searchTerm.trim() && sortedAndFilteredVoters.length > 0) {
+    if (searchTerm.trim() && filteredVoters.length > 0) {
       const element = document.getElementById('voter-preview');
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
-  }, [searchTerm, sortedAndFilteredVoters.length]);
+  }, [searchTerm, filteredVoters.length]);
 
   const handleSearchChange = (value: string) => {
     // Clear existing timeout
@@ -102,9 +106,9 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({ voters, headerText, onEditV
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Get the original index for serial numbering
-  const getOriginalIndex = (voter: Voter, displayIndex: number) => {
-    return sortedAndFilteredVoters.findIndex(v => v.id === voter.id);
+  // Get the global index in the sorted list for consistent serial numbering
+  const getGlobalIndex = (voter: Voter): number => {
+    return sortedVoters.findIndex(v => v.id === voter.id);
   };
 
   if (voters.length === 0) {
@@ -126,18 +130,14 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({ voters, headerText, onEditV
       return (
         <div style={style} className="flex gap-4 px-4">
           {rowVoters.map((voter, colIndex) => {
-            const originalIndex = getOriginalIndex(voter, rowStartIndex + colIndex);
-            const isHighlighted = searchTerm.trim() && 
-              voter.entryNumber.toLowerCase().includes(searchTerm.toLowerCase());
+            const globalIndex = getGlobalIndex(voter);
+            const serialNumber = getSerialNumber(globalIndex, startSerial);
             
             return (
-              <div 
-                key={voter.id} 
-                className={`flex-1 ${isHighlighted ? 'bg-yellow-100 rounded-lg p-1' : ''}`}
-              >
+              <div key={voter.id} className="flex-1">
                 <VoterCard 
                   voter={voter} 
-                  index={originalIndex} 
+                  index={serialNumber - 1} // VoterCard expects 0-based for display
                   onEdit={onEditVoter}
                 />
               </div>
@@ -170,13 +170,13 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({ voters, headerText, onEditV
           </div>
           
           <p className="text-sm text-gray-500">
-            Showing {currentPageVoters.length} of {sortedAndFilteredVoters.length} voters 
+            Showing {currentPageVoters.length} of {filteredVoters.length} voters 
             {searchTerm.trim() && ` (filtered from ${voters.length} total)`}
             {totalPages > 0 && ` (Page ${currentPage} of ${totalPages})`}
           </p>
         </div>
         
-        {sortedAndFilteredVoters.length === 0 ? (
+        {filteredVoters.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">
               No voters found matching "{searchTerm}"
@@ -230,13 +230,13 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({ voters, headerText, onEditV
         </div>
         
         <p className="text-sm text-gray-500">
-          Showing {currentPageVoters.length} of {sortedAndFilteredVoters.length} voters 
+          Showing {currentPageVoters.length} of {filteredVoters.length} voters 
           {searchTerm.trim() && ` (filtered from ${voters.length} total)`}
           {totalPages > 0 && ` (Page ${currentPage} of ${totalPages})`}
         </p>
       </div>
       
-      {sortedAndFilteredVoters.length === 0 ? (
+      {filteredVoters.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-500 text-lg">
             No voters found matching "{searchTerm}"
@@ -245,22 +245,17 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({ voters, headerText, onEditV
       ) : (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" id="voter-preview">
-            {currentPageVoters.map((voter, index) => {
-              const originalIndex = getOriginalIndex(voter, index);
-              const isHighlighted = searchTerm.trim() && 
-                voter.entryNumber.toLowerCase().includes(searchTerm.toLowerCase());
+            {currentPageVoters.map((voter) => {
+              const globalIndex = getGlobalIndex(voter);
+              const serialNumber = getSerialNumber(globalIndex, startSerial);
               
               return (
-                <div 
-                  key={voter.id} 
-                  className={isHighlighted ? 'bg-yellow-100 rounded-lg p-1' : ''}
-                >
-                  <VoterCard 
-                    voter={voter} 
-                    index={originalIndex} 
-                    onEdit={onEditVoter}
-                  />
-                </div>
+                <VoterCard 
+                  key={voter.id}
+                  voter={voter} 
+                  index={serialNumber - 1} // VoterCard expects 0-based for display
+                  onEdit={onEditVoter}
+                />
               );
             })}
           </div>
