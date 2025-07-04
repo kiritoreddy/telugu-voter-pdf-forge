@@ -18,14 +18,20 @@ const BASE_FONT = {
 };
 const MIN_FONT = 7;
 
-/* ---------- 2 · Generate PDF ---------- */
+/* ---------- 2 · Generate PDF with photos-first ordering ---------- */
 export const generatePDF = async (
   voters: Voter[],
   settings: AppSettings
 ): Promise<void> => {
   if (!voters.length) throw new Error('No voters to export');
 
-  /* 2-A. Paper & scale */
+  /* 2-A. Apply photos-first sorting (same as Preview) */
+  const sortedVoters = [
+    ...voters.filter(v => v.photo),     // with photo
+    ...voters.filter(v => !v.photo),   // without photo
+  ];
+
+  /* 2-B. Paper & scale */
   const paperDim = settings.pdfPaperSize === 'a4'
     ? { width: 210, height: 297 }
     : { width: 216, height: 356 };
@@ -34,12 +40,12 @@ export const generatePDF = async (
     ? 1
     : paperDim.height / BASE_HEIGHT;
 
-  /* 2-B. Layout constants */
+  /* 2-C. Layout constants */
   const margin        = 10;
   const headerHeight  = 30 * scale;
   const footerHeight  = 25 * scale;
   const VOTERS_PER_ROW = 2;
-  const ROWS_PER_PAGE  = 10;                 // 🔒 fixed
+  const ROWS_PER_PAGE  = 10;                 // 🔒 fixed
   const VOTERS_PER_PAGE = VOTERS_PER_ROW * ROWS_PER_PAGE;
 
   const contentHeight = paperDim.height - headerHeight - footerHeight - margin * 2;
@@ -47,15 +53,15 @@ export const generatePDF = async (
   const columnWidth   = (paperDim.width - margin * 2) / VOTERS_PER_ROW;
   const lineHeight    = rowHeight / 6;                               // 5 lines + padding
 
-  /* 2-C. Scaled fonts */
+  /* 2-D. Scaled fonts */
   const fontScale = rowHeight / BASE_ROW_HEIGHT;
   const font = Object.fromEntries(
     (Object.entries(BASE_FONT) as [keyof typeof BASE_FONT, number][])
       .map(([k, v]) => [k, Math.max(MIN_FONT, v * fontScale)])
   ) as Record<keyof typeof BASE_FONT, number>;
 
-  /* 2-D. Pagination */
-  const totalPages = Math.ceil(voters.length / VOTERS_PER_PAGE);
+  /* 2-E. Pagination with column-major ordering */
+  const totalPages = Math.ceil(sortedVoters.length / VOTERS_PER_PAGE);
   for (let p = 0; p < totalPages; p++) {
     if (p) pdf.addPage();
     addHeader(pdf, settings, paperDim.width, font);
@@ -63,11 +69,13 @@ export const generatePDF = async (
     const startY = 5 + headerHeight;
     for (let row = 0; row < ROWS_PER_PAGE; row++) {
       for (let col = 0; col < VOTERS_PER_ROW; col++) {
+        // Column-major index calculation
         const idx = p * VOTERS_PER_PAGE + row + col * ROWS_PER_PAGE;
-        if (idx >= voters.length) continue;
+        if (idx >= sortedVoters.length) continue;
+        
         await addBox(
           pdf,
-          voters[idx],
+          sortedVoters[idx],
           margin + col * columnWidth,
           startY + row * rowHeight,
           columnWidth,

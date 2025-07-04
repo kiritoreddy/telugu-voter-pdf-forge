@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import { Voter } from '@/types/voter';
 import VoterCard from './VoterCard';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 interface VoterPreviewProps {
@@ -15,40 +17,94 @@ const VOTERS_PER_ROW = 2;
 
 const VoterPreview: React.FC<VoterPreviewProps> = ({ voters, headerText, onEditVoter }) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  const totalPages = Math.ceil(voters.length / VOTERS_PER_PAGE);
+  // Photos-first sorting with search filtering
+  const sortedAndFilteredVoters = useMemo(() => {
+    // First, sort by photos-first
+    const sorted = [
+      ...voters.filter(v => v.photo),     // with photo
+      ...voters.filter(v => !v.photo),   // without photo
+    ];
+
+    // Then apply search filter if there's a search term
+    if (searchTerm.trim()) {
+      return sorted.filter(v => 
+        v.entryNumber.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    return sorted;
+  }, [voters, searchTerm]);
+
+  const totalPages = Math.ceil(sortedAndFilteredVoters.length / VOTERS_PER_PAGE);
 
   // Sort voters in column-major order (same as PDF)
-  const sortedVoters = useMemo(() => {
-    const sorted: Voter[] = [];
+  const columnMajorVoters = useMemo(() => {
+    const result: Voter[] = [];
     const rowsPerPage = VOTERS_PER_PAGE / VOTERS_PER_ROW;
     
     for (let page = 0; page < totalPages; page++) {
       const pageStart = page * VOTERS_PER_PAGE;
-      const pageVoters = voters.slice(pageStart, pageStart + VOTERS_PER_PAGE);
+      const pageVoters = sortedAndFilteredVoters.slice(pageStart, pageStart + VOTERS_PER_PAGE);
       
       // Arrange in column-major order
       for (let row = 0; row < rowsPerPage; row++) {
         for (let col = 0; col < VOTERS_PER_ROW; col++) {
           const index = col * rowsPerPage + row;
           if (index < pageVoters.length) {
-            sorted.push(pageVoters[index]);
+            result.push(pageVoters[index]);
           }
         }
       }
     }
     
-    return sorted;
-  }, [voters, totalPages]);
+    return result;
+  }, [sortedAndFilteredVoters, totalPages]);
 
   const currentPageVoters = useMemo(() => {
     const startIndex = (currentPage - 1) * VOTERS_PER_PAGE;
-    return sortedVoters.slice(startIndex, startIndex + VOTERS_PER_PAGE);
-  }, [sortedVoters, currentPage]);
+    return columnMajorVoters.slice(startIndex, startIndex + VOTERS_PER_PAGE);
+  }, [columnMajorVoters, currentPage]);
+
+  // Reset to page 1 when search results change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [sortedAndFilteredVoters.length]);
+
+  // Auto-scroll to first match when search results change
+  React.useEffect(() => {
+    if (searchTerm.trim() && sortedAndFilteredVoters.length > 0) {
+      const element = document.getElementById('voter-preview');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [searchTerm, sortedAndFilteredVoters.length]);
+
+  const handleSearchChange = (value: string) => {
+    // Clear existing timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    // Set new timeout for debouncing (200ms)
+    const timeout = setTimeout(() => {
+      setSearchTerm(value);
+    }, 200);
+
+    setSearchTimeout(timeout);
+  };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Get the original index for serial numbering
+  const getOriginalIndex = (voter: Voter, displayIndex: number) => {
+    return sortedAndFilteredVoters.findIndex(v => v.id === voter.id);
   };
 
   if (voters.length === 0) {
@@ -69,15 +125,24 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({ voters, headerText, onEditV
       
       return (
         <div style={style} className="flex gap-4 px-4">
-          {rowVoters.map((voter, colIndex) => (
-            <div key={voter.id} className="flex-1">
-              <VoterCard 
-                voter={voter} 
-                index={rowStartIndex + colIndex} 
-                onEdit={onEditVoter}
-              />
-            </div>
-          ))}
+          {rowVoters.map((voter, colIndex) => {
+            const originalIndex = getOriginalIndex(voter, rowStartIndex + colIndex);
+            const isHighlighted = searchTerm.trim() && 
+              voter.entryNumber.toLowerCase().includes(searchTerm.toLowerCase());
+            
+            return (
+              <div 
+                key={voter.id} 
+                className={`flex-1 ${isHighlighted ? 'bg-yellow-100 rounded-lg p-1' : ''}`}
+              >
+                <VoterCard 
+                  voter={voter} 
+                  index={originalIndex} 
+                  onEdit={onEditVoter}
+                />
+              </div>
+            );
+          })}
         </div>
       );
     };
@@ -91,28 +156,53 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({ voters, headerText, onEditV
             {headerText}
           </h2>
           <p className="text-lg text-gray-700">Members List</p>
+          
+          {/* Search Bar */}
+          <div className="flex justify-center mt-4 mb-2">
+            <div className="relative w-full max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search Entry Number..."
+                className="pl-10"
+                onChange={(e) => handleSearchChange(e.target.value)}
+              />
+            </div>
+          </div>
+          
           <p className="text-sm text-gray-500">
-            Showing {currentPageVoters.length} of {voters.length} voters (Page {currentPage} of {totalPages})
+            Showing {currentPageVoters.length} of {sortedAndFilteredVoters.length} voters 
+            {searchTerm.trim() && ` (filtered from ${voters.length} total)`}
+            {totalPages > 0 && ` (Page ${currentPage} of ${totalPages})`}
           </p>
         </div>
         
-        <div className="border rounded-lg">
-          <List
-            height={600}
-            itemCount={rowCount}
-            itemSize={200}
-            width="100%"
-          >
-            {VirtualizedRow}
-          </List>
-        </div>
+        {sortedAndFilteredVoters.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-lg">
+              No voters found matching "{searchTerm}"
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="border rounded-lg">
+              <List
+                height={600}
+                itemCount={rowCount}
+                itemSize={200}
+                width="100%"
+              >
+                {VirtualizedRow}
+              </List>
+            </div>
 
-        {totalPages > 1 && (
-          <PaginationComponent 
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-          />
+            {totalPages > 1 && (
+              <PaginationComponent 
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            )}
+          </>
         )}
       </div>
     );
@@ -126,28 +216,63 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({ voters, headerText, onEditV
           {headerText}
         </h2>
         <p className="text-lg text-gray-700">Members List</p>
+        
+        {/* Search Bar */}
+        <div className="flex justify-center mt-4 mb-2">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search Entry Number..."
+              className="pl-10"
+              onChange={(e) => handleSearchChange(e.target.value)}
+            />
+          </div>
+        </div>
+        
         <p className="text-sm text-gray-500">
-          Showing {currentPageVoters.length} of {voters.length} voters (Page {currentPage} of {totalPages})
+          Showing {currentPageVoters.length} of {sortedAndFilteredVoters.length} voters 
+          {searchTerm.trim() && ` (filtered from ${voters.length} total)`}
+          {totalPages > 0 && ` (Page ${currentPage} of ${totalPages})`}
         </p>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" id="voter-preview">
-        {currentPageVoters.map((voter, index) => (
-          <VoterCard 
-            key={voter.id} 
-            voter={voter} 
-            index={(currentPage - 1) * VOTERS_PER_PAGE + index} 
-            onEdit={onEditVoter}
-          />
-        ))}
-      </div>
+      {sortedAndFilteredVoters.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500 text-lg">
+            No voters found matching "{searchTerm}"
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" id="voter-preview">
+            {currentPageVoters.map((voter, index) => {
+              const originalIndex = getOriginalIndex(voter, index);
+              const isHighlighted = searchTerm.trim() && 
+                voter.entryNumber.toLowerCase().includes(searchTerm.toLowerCase());
+              
+              return (
+                <div 
+                  key={voter.id} 
+                  className={isHighlighted ? 'bg-yellow-100 rounded-lg p-1' : ''}
+                >
+                  <VoterCard 
+                    voter={voter} 
+                    index={originalIndex} 
+                    onEdit={onEditVoter}
+                  />
+                </div>
+              );
+            })}
+          </div>
 
-      {totalPages > 1 && (
-        <PaginationComponent 
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-        />
+          {totalPages > 1 && (
+            <PaginationComponent 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
+          )}
+        </>
       )}
     </div>
   );
