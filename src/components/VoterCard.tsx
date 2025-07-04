@@ -1,17 +1,20 @@
-
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Edit } from 'lucide-react';
 import { Voter } from '@/types/voter';
+import { getTextClass } from '@/utils/teluguSupport';
 
 interface VoterCardProps {
   voter: Voter;
   index: number;
   onEdit: (voter: Voter) => void;
+  script?: 'latin' | 'telugu';
 }
 
-const VoterCard: React.FC<VoterCardProps> = ({ voter, index, onEdit }) => {
+const VoterCard: React.FC<VoterCardProps> = ({ voter, index, onEdit, script = 'latin' }) => {
+  const textClass = getTextClass(script);
+
   return (
     <Card className="p-0 border-2 border-gray-400 bg-white voter-card relative">
       <Button
@@ -30,7 +33,7 @@ const VoterCard: React.FC<VoterCardProps> = ({ voter, index, onEdit }) => {
         </div>
 
         {/* Text Details Section - 65% width */}
-        <div className="w-[65%] p-3 min-w-0">
+        <div className={`w-[65%] p-3 min-w-0 ${textClass}`}>
           <div className="space-y-1 text-sm">
             {/* Line 1: Entry No. and Entry Date */}
             <div className="flex justify-between">
@@ -59,8 +62,6 @@ const VoterCard: React.FC<VoterCardProps> = ({ voter, index, onEdit }) => {
               <span><strong>Age:</strong> {voter.age}</span>
               <span><strong>Gender:</strong> {voter.gender}</span>
             </div>
-            
-            
           </div>
         </div>
 

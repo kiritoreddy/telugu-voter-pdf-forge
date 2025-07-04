@@ -42,6 +42,14 @@ const Index = () => {
     setActiveTab('preview');
   };
 
+  const handleLanguageDetected = (script: 'latin' | 'telugu') => {
+    if (script !== settings.script) {
+      const newSettings = { ...settings, script };
+      setSettings(newSettings);
+      storeSettings(newSettings);
+    }
+  };
+
   const handleEditVoter = (voter: Voter) => {
     setEditingVoter(voter);
     setIsEditDialogOpen(true);
@@ -78,7 +86,7 @@ const Index = () => {
       await generatePDF(voters, settings);
       toast({
         title: "Success!",
-        description: `PDF generated successfully (${settings.pdfPaperSize.toUpperCase()} format)`,
+        description: `PDF generated successfully (${settings.pdfPaperSize.toUpperCase()} format, ${settings.script === 'telugu' ? 'Telugu' : 'English'} text)`,
       });
     } catch (error) {
       console.error('PDF generation error:', error);
@@ -110,6 +118,11 @@ const Index = () => {
           <p className="text-xl text-gray-600">
             Complete Voter Registration & PDF Generation Platform
           </p>
+          {settings.script === 'telugu' && (
+            <p className="text-sm text-blue-600 mt-2">
+              Telugu Mode Active - తెలుగు మోడ్ సక్రియం
+            </p>
+          )}
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -140,7 +153,10 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="bulk" className="animate-fade-in">
-            <BulkUpload onVotersUploaded={handleBulkUpload} />
+            <BulkUpload 
+              onVotersUploaded={handleBulkUpload}
+              onLanguageDetected={handleLanguageDetected}
+            />
           </TabsContent>
 
           <TabsContent value="preview" className="animate-fade-in">
@@ -151,7 +167,7 @@ const Index = () => {
                   disabled={voters.length === 0}
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  Download PDF ({settings.pdfPaperSize.toUpperCase()})
+                  Download PDF ({settings.pdfPaperSize.toUpperCase()}, {settings.script === 'telugu' ? 'Telugu' : 'English'})
                 </Button>
                 <Button
                   onClick={handleClearAll}

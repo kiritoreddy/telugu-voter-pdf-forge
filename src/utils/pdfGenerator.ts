@@ -19,17 +19,50 @@ const BASE_FONT = {
 };
 const MIN_FONT = 7;
 
-/* ---------- 2 · Generate PDF with photos-first ordering ---------- */
+/* ---------- 2 · Telugu Font Support ---------- */
+let teluguFontLoaded = false;
+
+const loadTeluguFont = async (pdf: jsPDF): Promise<void> => {
+  if (teluguFontLoaded) return;
+  
+  try {
+    // Load Noto Sans Telugu font from Google Fonts
+    const fontUrl = 'https://fonts.gstatic.com/s/notosanstelugu/v25/0FlxVOGZlE2Rrtr-HmgkaMBBjAIJANOgZgPtfA.woff2';
+    const response = await fetch(fontUrl);
+    const fontData = await response.arrayBuffer();
+    
+    // Convert to base64 for jsPDF
+    const fontBase64 = btoa(String.fromCharCode(...new Uint8Array(fontData)));
+    
+    // Add font to jsPDF
+    pdf.addFileToVFS('NotoSansTelugu.ttf', fontBase64);
+    pdf.addFont('NotoSansTelugu.ttf', 'NotoSansTelugu', 'normal');
+    
+    teluguFontLoaded = true;
+  } catch (error) {
+    console.warn('Failed to load Telugu font, falling back to default:', error);
+  }
+};
+
+const setFont = (pdf: jsPDF, script: 'latin' | 'telugu', style: 'normal' | 'bold' = 'normal'): void => {
+  if (script === 'telugu' && teluguFontLoaded) {
+    pdf.setFont('NotoSansTelugu', style);
+  } else {
+    pdf.setFont('helvetica', style);
+  }
+};
+
+/* ---------- 3 · Generate PDF with photos-first ordering ---------- */
 export const generatePDF = async (
   voters: Voter[],
   settings: AppSettings
 ): Promise<void> => {
   if (!voters.length) throw new Error('No voters to export');
 
-  /* 2-A. Apply photos-first sorting (same as Preview) */
+  /* 3-A. Apply photos-first sorting (same as Preview) */
   const sortedVoters = applyPhotosFirstSorting(voters);
 
-  /* 2-B. Paper & scale */
+  /* 3-B. Paper & scale */
   const paperDim = settings.pdfPaperSize === 'a4'
     ? { width: 210, height: 297 }
     : { width: 216, height: 356 };
@@ -38,7 +71,12 @@ export const generatePDF = async (
     ? 1
     : paperDim.height / BASE_HEIGHT;
 
-  /* 2-C. Layout constants */
+  /* 3-C. Load Telugu font if needed */
+  if (settings.script === 'telugu') {
+    await loadTeluguFont(pdf);
+  }
+
+  /* 3-D. Layout constants */
   const margin        = 10;
   const headerHeight  = 30 * scale;
   const footerHeight  = 25 * scale;
@@ -51,14 +89,14 @@ export const generatePDF = async (
   const columnWidth   = (paperDim.width - margin * 2) / VOTERS_PER_ROW;
   const lineHeight    = rowHeight / 6;                               // 5 lines + padding
 
-  /* 2-D. Scaled fonts */
+  /* 3-E. Scaled fonts */
   const fontScale = rowHeight / BASE_ROW_HEIGHT;
   const font = Object.fromEntries(
     (Object.entries(BASE_FONT) as [keyof typeof BASE_FONT, number][])
       .map(([k, v]) => [k, Math.max(MIN_FONT, v * fontScale)])
   ) as Record<keyof typeof BASE_FONT, number>;
 
-  /* 2-E. Pagination with column-major ordering */
+  /* 3-F. Pagination with column-major ordering */
   const totalPages = Math.ceil(sortedVoters.length / VOTERS_PER_PAGE);
   for (let p = 0; p < totalPages; p++) {
     if (p) pdf.addPage();
@@ -83,7 +121,8 @@ export const generatePDF = async (
           rowHeight,
           serialNumber,
           font,
-          lineHeight
+          lineHeight,
+          settings.script
         );
       }
     }
@@ -91,17 +130,18 @@ export const generatePDF = async (
     addFooter(pdf, settings, paperDim, p + 1, totalPages, font);
   }
 
-  pdf.save(`voter-list-${settings.pdfPaperSize}.pdf`);
+  pdf.save(`voter-list-${settings.pdfPaperSize}-${settings.script}.pdf`);
 };
 
-/* ---------- 3 · Helpers ---------- */
+/* ---------- 4 · Helpers ---------- */
 const addHeader = (
   pdf: jsPDF,
   settings: AppSettings,
   pageWidth: number,
   f: Record<string, number>
 ) => {
-  pdf.setFont('helvetica', 'bold').setFontSize(f.header);
+  setFont(pdf, settings.script, 'bold');
+  pdf.setFontSize(f.header);
   pdf.text(settings.pdfHeader, pageWidth / 2, 12, { align: 'center' });
 
   pdf.setFontSize(f.pageTitle);
@@ -122,7 +162,8 @@ const addFooter = (
   f: Record<string, number>
 ) => {
   const y0 = dim.height - 30;
-  pdf.setFont('helvetica', 'normal').setFontSize(f.footer);
+  setFont(pdf, settings.script, 'normal');
+  pdf.setFontSize(f.footer);
 
   settings.footerLeft.forEach((txt, i) =>
     txt?.trim() && pdf.text(txt, 10, y0 + i * 4)
@@ -147,7 +188,8 @@ const addBox = async (
   h: number,
   slNo: number,
   f: Record<string, number>,
-  lh: number
+  lh: number,
+  script: 'latin' | 'telugu'
 ) => {
   /* borders */
   const snoW = w * 0.1,
@@ -156,7 +198,8 @@ const addBox = async (
   pdf.setLineWidth(0.3).rect(x, y, w, h).rect(x, y, snoW, h);
 
   /* serial */
-  pdf.setFont('helvetica', 'bold').setFontSize(f.label);
+  setFont(pdf, script, 'bold');
+  pdf.setFontSize(f.label);
   pdf.text(String(slNo), x + snoW / 2, y + h / 2, { align: 'center' });
 
   /* photo */
@@ -168,12 +211,14 @@ const addBox = async (
     try {
       pdf.addImage(v.photo, 'JPEG', pX + 1, pY + 1, photoW - 2, pH - 2);
     } catch {
-      pdf.setFontSize(f.photo).text('Photo', pX + photoW / 2, pY + pH / 2, {
+      pdf.setFontSize(f.photo);
+      pdf.text('Photo', pX + photoW / 2, pY + pH / 2, {
         align: 'center',
       });
     }
   } else {
-    pdf.setFontSize(f.photo).text('Photo', pX + photoW / 2, pY + pH / 2, {
+    pdf.setFontSize(f.photo);
+    pdf.text('Photo', pX + photoW / 2, pY + pH / 2, {
       align: 'center',
     });
   }
@@ -181,17 +226,20 @@ const addBox = async (
   /* text */
   let tY = y + 5;
   const tX = x + snoW + 2;
-  pdf.setFont('helvetica', 'bold').setFontSize(f.body);
+  setFont(pdf, script, 'bold');
+  pdf.setFontSize(f.body);
 
   pdf.text(`Admn. No: ${v.entryNumber}`, tX, tY);
   pdf.text(`Admn. Date: ${v.entryDate}`, tX + textW, tY, { align: 'right' });
   tY += lh;
 
-  pdf.setFont('helvetica', 'bold').setFontSize(f.name);
+  setFont(pdf, script, 'bold');
+  pdf.setFontSize(f.name);
   pdf.text(`Name: ${v.name}`, tX, tY);
   tY += lh;
 
-  pdf.setFont('helvetica', 'normal').setFontSize(f.body);
+  setFont(pdf, script, 'normal');
+  pdf.setFontSize(f.body);
   pdf.text(`Father/Husband Name: ${v.fatherHusbandName}`, tX, tY);
   tY += lh;
 

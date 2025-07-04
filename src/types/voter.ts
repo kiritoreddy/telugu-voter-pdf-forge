@@ -29,6 +29,7 @@ export interface AppSettings {
   pdfPageTitle: string;
   pdfPaperSize: 'a4' | 'legal';
   startSerial: number;
+  script: 'latin' | 'telugu';
   footerLeft: [string, string, string, string];
   footerRight: [string, string, string, string];
 }

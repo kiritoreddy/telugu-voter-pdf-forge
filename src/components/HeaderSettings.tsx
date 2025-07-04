@@ -38,8 +38,8 @@ const HeaderSettings: React.FC<HeaderSettingsProps> = ({ settings, onUpdateSetti
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          {/* Paper Size */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Paper Size and Script */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="paperSize">Paper Size</Label>
               <Select 
@@ -52,6 +52,22 @@ const HeaderSettings: React.FC<HeaderSettingsProps> = ({ settings, onUpdateSetti
                 <SelectContent>
                   <SelectItem value="a4">A4 (210 × 297 mm)</SelectItem>
                   <SelectItem value="legal">Legal (216 × 356 mm)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="script">Text Script</Label>
+              <Select 
+                value={formData.script} 
+                onValueChange={(value) => handleInputChange('script', value as 'latin' | 'telugu')}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="latin">Latin (English)</SelectItem>
+                  <SelectItem value="telugu">Telugu (తెలుగు)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -79,6 +95,7 @@ const HeaderSettings: React.FC<HeaderSettingsProps> = ({ settings, onUpdateSetti
                 value={formData.pdfHeader}
                 onChange={(e) => handleInputChange('pdfHeader', e.target.value)}
                 placeholder="Enter header text for PDF"
+                className={formData.script === 'telugu' ? 'font-telugu' : 'font-inter'}
               />
             </div>
             
@@ -89,6 +106,7 @@ const HeaderSettings: React.FC<HeaderSettingsProps> = ({ settings, onUpdateSetti
                 value={formData.pdfPageTitle}
                 onChange={(e) => handleInputChange('pdfPageTitle', e.target.value)}
                 placeholder="Enter page title for PDF"
+                className={formData.script === 'telugu' ? 'font-telugu' : 'font-inter'}
               />
             </div>
             
@@ -99,6 +117,7 @@ const HeaderSettings: React.FC<HeaderSettingsProps> = ({ settings, onUpdateSetti
                 value={formData.pdfSubHeader}
                 onChange={(e) => handleInputChange('pdfSubHeader', e.target.value)}
                 placeholder="Enter subheader text for PDF"
+                className={formData.script === 'telugu' ? 'font-telugu' : 'font-inter'}
               />
             </div>
           </div>
@@ -117,6 +136,7 @@ const HeaderSettings: React.FC<HeaderSettingsProps> = ({ settings, onUpdateSetti
                   value={formData.footerLeft.join('\n')}
                   onChange={(e) => handleFooterChange('footerLeft', e.target.value)}
                   placeholder="Line 1&#10;Line 2&#10;Line 3&#10;Line 4"
+                  className={formData.script === 'telugu' ? 'font-telugu' : 'font-inter'}
                 />
               </div>
               
@@ -128,6 +148,7 @@ const HeaderSettings: React.FC<HeaderSettingsProps> = ({ settings, onUpdateSetti
                   value={formData.footerRight.join('\n')}
                   onChange={(e) => handleFooterChange('footerRight', e.target.value)}
                   placeholder="Line 1&#10;Line 2&#10;Line 3&#10;Line 4"
+                  className={formData.script === 'telugu' ? 'font-telugu' : 'font-inter'}
                 />
               </div>
             </div>

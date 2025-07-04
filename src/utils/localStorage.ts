@@ -13,6 +13,7 @@ export const getStoredSettings = (): AppSettings => {
         pdfPageTitle: parsed.pdfPageTitle || 'Voters list of_____________________________________________Society,___________Village,__________Mandal,',
         pdfPaperSize: parsed.pdfPaperSize || 'legal',
         startSerial: parsed.startSerial || 1,
+        script: parsed.script || 'latin',
         footerLeft: parsed.footerLeft || ['', '','Signature of the President of Incumbent Managing', 'Committee/PIC/Official Administrator/Adhoc Committee'],
         footerRight: parsed.footerRight || ['', '', 'Signature of the Registrar', '']
       };
@@ -27,6 +28,7 @@ export const getStoredSettings = (): AppSettings => {
     pdfPageTitle: 'Voters list of_____________________________________________Society,___________Village,__________Mandal,',
     pdfPaperSize: 'legal',
     startSerial: 1,
+    script: 'latin',
     footerLeft: ['', '','Signature of the President of Incumbent Managing', 'Committee/PIC/Official Administrator/Adhoc Committee'],
     footerRight: ['', '', 'Signature of the Registrar', '']
   };

@@ -5,6 +5,7 @@
    import * as XLSX from 'xlsx';
    import JSZip from 'jszip';
    import { ParsedVoter, BulkUploadError, Voter } from '@/types/voter';
+   import { detectTeluguInVoters } from './teluguSupport';
    
    /* ================================================================
       1. TEMPLATE DOWNLOAD
@@ -49,7 +50,7 @@
    export const parseExcelFile = async (
      file: File,
      onProgress: (p: number) => void
-   ): Promise<ParsedVoter[]> =>
+   ): Promise<{ voters: ParsedVoter[], hasTeluguContent: boolean }> =>
      new Promise((resolve, reject) => {
        const reader = new FileReader();
    
@@ -74,8 +75,11 @@
              onProgress(Math.min(((i + chunk) / total) * 100, 100));
              await new Promise((r) => setTimeout(r, 10)); // let UI breathe
            }
+
+           // Detect Telugu content
+           const hasTeluguContent = detectTeluguInVoters(parsed);
    
-           resolve(parsed);
+           resolve({ voters: parsed, hasTeluguContent });
          } catch (err) {
            reject(err);
          }
@@ -281,4 +285,3 @@
        r.onerror = rej;
        r.readAsDataURL(b);
      });
-   

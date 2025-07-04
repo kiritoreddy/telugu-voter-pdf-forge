@@ -28,6 +28,7 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const startSerial = settings?.startSerial || 1;
+  const script = settings?.script || 'latin';
 
   // Photos-first sorting with search filtering
   const { sortedVoters, filteredVoters } = useMemo(() => {
@@ -139,6 +140,7 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({
                   voter={voter} 
                   index={serialNumber - 1} // VoterCard expects 0-based for display
                   onEdit={onEditVoter}
+                  script={script}
                 />
               </div>
             );
@@ -255,6 +257,7 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({
                   voter={voter} 
                   index={serialNumber - 1} // VoterCard expects 0-based for display
                   onEdit={onEditVoter}
+                  script={script}
                 />
               );
             })}

@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Download, Upload, FileSpreadsheet, Archive, AlertCircle, CheckCircle } from 'lucide-react';
-import { Voter, ParsedVoter, BulkUploadError } from '@/types/voter';
+import { Voter, ParsedVoter, BulkUploadError, AppSettings } from '@/types/voter';
 import {
   downloadTemplate,
   parseExcelFile,
@@ -21,9 +21,10 @@ import { toast } from '@/hooks/use-toast';
 
 interface BulkUploadProps {
   onVotersUploaded: (voters: Voter[]) => void;
+  onLanguageDetected?: (script: 'latin' | 'telugu') => void;
 }
 
-const BulkUpload: React.FC<BulkUploadProps> = ({ onVotersUploaded }) => {
+const BulkUpload: React.FC<BulkUploadProps> = ({ onVotersUploaded, onLanguageDetected }) => {
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [photosFile, setPhotosFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -130,9 +131,21 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ onVotersUploaded }) => {
     try {
       // Step 1: Parse Excel file
       setCurrentStep('Parsing Excel file...');
-      const voters = await parseExcelFile(excelFile, (progress) => {
+      const { voters, hasTeluguContent } = await parseExcelFile(excelFile, (progress) => {
         setProgress(progress * 0.4); // 40% for Excel parsing
       });
+
+      // Notify parent about language detection
+      if (onLanguageDetected) {
+        onLanguageDetected(hasTeluguContent ? 'telugu' : 'latin');
+        
+        if (hasTeluguContent) {
+          toast({
+            title: "Telugu Content Detected",
+            description: "Automatically switched to Telugu mode for proper text rendering",
+          });
+        }
+      }
 
       // Step 2: Parse photos if provided
       let photoMap = new Map<string, string>();
@@ -162,7 +175,7 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ onVotersUploaded }) => {
       if (validationErrors.length === 0) {
         toast({
           title: "Success!",
-          description: `Successfully processed ${voters.length} voters`,
+          description: `Successfully processed ${voters.length} voters${hasTeluguContent ? ' (Telugu content detected)' : ''}`,
         });
       } else {
         toast({
@@ -395,6 +408,7 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ onVotersUploaded }) => {
                 <li>Gender: Must be "Male" or "Female"</li>
                 <li>Age: Number between 18 and 120</li>
                 <li>All fields are required</li>
+                <li><strong>Telugu Support:</strong> Telugu text will be automatically detected and rendered properly</li>
               </ul>
             </div>
             
