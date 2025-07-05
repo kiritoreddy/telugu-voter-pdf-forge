@@ -19,11 +19,17 @@ const BASE_FONT = {
 };
 const MIN_FONT = 7;
 
-/* ---------- 2 · Telugu Font Support ---------- */
+/* ---------- 2 · Telugu Font Support with Proper Embedding ---------- */
 let teluguFontLoaded = false;
+let teluguFontData: string | null = null;
 
 const loadTeluguFont = async (pdf: jsPDF): Promise<void> => {
-  if (teluguFontLoaded) return;
+  if (teluguFontLoaded && teluguFontData) {
+    // Re-add the font to this PDF instance
+    pdf.addFileToVFS('NotoSansTelugu-Regular.ttf', teluguFontData);
+    pdf.addFont('NotoSansTelugu-Regular.ttf', 'NotoSansTelugu', 'normal');
+    return;
+  }
   
   try {
     // Fetch the Telugu font file from the public directory
@@ -37,29 +43,33 @@ const loadTeluguFont = async (pdf: jsPDF): Promise<void> => {
     const fontData = await response.arrayBuffer();
     
     // Convert ArrayBuffer to base64 string for jsPDF
-    const fontBase64 = btoa(
+    teluguFontData = btoa(
       new Uint8Array(fontData).reduce((data, byte) => data + String.fromCharCode(byte), '')
     );
     
-    // Add the font to jsPDF's virtual file system
-    pdf.addFileToVFS('NotoSansTelugu-Regular.ttf', fontBase64);
+    // Add the font to jsPDF's virtual file system with proper embedding
+    pdf.addFileToVFS('NotoSansTelugu-Regular.ttf', teluguFontData);
     
-    // Register the font with jsPDF
+    // Register the font with jsPDF - this ensures proper embedding
     pdf.addFont('NotoSansTelugu-Regular.ttf', 'NotoSansTelugu', 'normal');
     
+    // Force font embedding by setting it as the current font
+    pdf.setFont('NotoSansTelugu', 'normal');
+    
     teluguFontLoaded = true;
-    console.log('Telugu font loaded successfully');
+    console.log('Telugu font loaded and embedded successfully');
   } catch (error) {
     console.warn('Failed to load Telugu font, falling back to default:', error);
     teluguFontLoaded = false;
+    teluguFontData = null;
   }
 };
 
 const setFont = (pdf: jsPDF, script: 'latin' | 'telugu', style: 'normal' | 'bold' = 'normal'): void => {
   try {
     if (script === 'telugu' && teluguFontLoaded) {
-      // Use Telugu font for Telugu text
-      pdf.setFont('NotoSansTelugu', style === 'bold' ? 'normal' : 'normal'); // Telugu font only has normal weight
+      // Use Telugu font for Telugu text - always use normal weight as Telugu font doesn't have bold
+      pdf.setFont('NotoSansTelugu', 'normal');
     } else {
       // Use Helvetica for Latin text or fallback
       pdf.setFont('helvetica', style);
@@ -90,9 +100,19 @@ export const generatePDF = async (
       ? 1
       : paperDim.height / BASE_HEIGHT;
 
-    /* 3-C. Load Telugu font if needed */
+    /* 3-C. Load and embed Telugu font if needed */
     if (settings.script === 'telugu') {
       await loadTeluguFont(pdf);
+      
+      // Ensure font is properly embedded by using it immediately
+      if (teluguFontLoaded) {
+        pdf.setFont('NotoSansTelugu', 'normal');
+        // Add invisible text to force font embedding
+        pdf.setTextColor(255, 255, 255); // White text (invisible)
+        pdf.setFontSize(1);
+        pdf.text('తెలుగు', 0, 0); // Telugu text to force embedding
+        pdf.setTextColor(0, 0, 0); // Reset to black
+      }
     }
 
     /* 3-D. Layout constants */
@@ -213,6 +233,8 @@ const addFooter = (
       }
     });
 
+    // Use Latin font for page numbers to ensure consistency
+    pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(f.pageNum);
     pdf.text(`Page ${pageNo} of ${total}`, dim.width / 2, dim.height - 5, {
       align: 'center',
@@ -241,8 +263,8 @@ const addBox = async (
       textW = w - snoW - photoW - 6;
     pdf.setLineWidth(0.3).rect(x, y, w, h).rect(x, y, snoW, h);
 
-    /* serial */
-    setFont(pdf, script, 'bold');
+    /* serial - always use Latin font for numbers */
+    pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(f.label);
     pdf.text(String(slNo), x + snoW / 2, y + h / 2, { align: 'center' });
 
@@ -256,51 +278,55 @@ const addBox = async (
         pdf.addImage(v.photo, 'JPEG', pX + 1, pY + 1, photoW - 2, pH - 2);
       } catch (imageError) {
         console.warn('Image rendering failed:', imageError);
-        setFont(pdf, script, 'normal');
+        pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(f.photo);
         pdf.text('Photo', pX + photoW / 2, pY + pH / 2, {
           align: 'center',
         });
       }
     } else {
-      setFont(pdf, script, 'normal');
+      pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(f.photo);
       pdf.text('Photo', pX + photoW / 2, pY + pH / 2, {
         align: 'center',
       });
     }
 
-    /* text */
+    /* text content with proper font selection */
     let tY = y + 5;
     const tX = x + snoW + 2;
     
-    // Set font for text content
-    setFont(pdf, script, 'bold');
+    // Entry number and date (always Latin)
+    pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(f.body);
-
-    // Render text with proper Telugu font support
     pdf.text(`Admn. No: ${v.entryNumber}`, tX, tY);
     pdf.text(`Admn. Date: ${v.entryDate}`, tX + textW, tY, { align: 'right' });
     tY += lh;
 
+    // Name (use appropriate script)
     setFont(pdf, script, 'bold');
     pdf.setFontSize(f.name);
     pdf.text(`Name: ${v.name}`, tX, tY);
     tY += lh;
 
+    // Father/Husband name (use appropriate script)
     setFont(pdf, script, 'normal');
     pdf.setFontSize(f.body);
     pdf.text(`Father/Husband Name: ${v.fatherHusbandName}`, tX, tY);
     tY += lh;
 
+    // Village (use appropriate script)
+    setFont(pdf, script, 'normal');
     pdf.text(`Village: ${v.village}`, tX, tY);
     tY += lh;
 
-    pdf.text(
-      `Caste: ${v.caste}  Age: ${v.age}  Gender: ${v.gender}`,
-      tX,
-      tY
-    );
+    // Caste, Age, Gender (use appropriate script for caste, Latin for age/gender)
+    setFont(pdf, script, 'normal');
+    pdf.text(`Caste: ${v.caste}`, tX, tY);
+    
+    // Use Latin font for age and gender
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Age: ${v.age}  Gender: ${v.gender}`, tX + 40, tY);
   } catch (error) {
     console.warn('Box rendering failed:', error);
   }

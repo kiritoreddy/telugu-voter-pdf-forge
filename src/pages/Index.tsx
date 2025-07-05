@@ -47,6 +47,12 @@ const Index = () => {
       const newSettings = { ...settings, script };
       setSettings(newSettings);
       storeSettings(newSettings);
+      
+      // Show toast notification about automatic language detection
+      toast({
+        title: "Language Detected",
+        description: `Automatically switched to ${script === 'telugu' ? 'Telugu' : 'English'} mode`,
+      });
     }
   };
 
@@ -64,12 +70,24 @@ const Index = () => {
   };
 
   const handleUpdateSettings = (newSettings: AppSettings) => {
+    // Clean state transition - ensure all UI elements update properly
+    const previousScript = settings.script;
+    
     setSettings(newSettings);
     storeSettings(newSettings);
-    toast({
-      title: "Success!",
-      description: "Settings saved successfully",
-    });
+    
+    // If script changed, show appropriate notification
+    if (previousScript !== newSettings.script) {
+      toast({
+        title: "Language Changed",
+        description: `Switched to ${newSettings.script === 'telugu' ? 'Telugu' : 'English'} mode`,
+      });
+    } else {
+      toast({
+        title: "Success!",
+        description: "Settings saved successfully",
+      });
+    }
   };
 
   const handleGeneratePDF = async () => {
@@ -108,6 +126,9 @@ const Index = () => {
     }
   };
 
+  // Determine if Telugu mode indicator should be shown
+  const showTeluguModeIndicator = settings.script === 'telugu';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-8">
@@ -118,8 +139,9 @@ const Index = () => {
           <p className="text-xl text-gray-600">
             Complete Voter Registration & PDF Generation Platform
           </p>
-          {settings.script === 'telugu' && (
-            <p className="text-sm text-blue-600 mt-2">
+          {/* Only show Telugu mode indicator when actually in Telugu mode */}
+          {showTeluguModeIndicator && (
+            <p className="text-sm text-blue-600 mt-2 font-telugu">
               Telugu Mode Active - తెలుగు మోడ్ సక్రియం
             </p>
           )}

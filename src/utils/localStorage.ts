@@ -13,7 +13,7 @@ export const getStoredSettings = (): AppSettings => {
         pdfPageTitle: parsed.pdfPageTitle || 'Voters list of_____________________________________________Society,___________Village,__________Mandal,',
         pdfPaperSize: parsed.pdfPaperSize || 'legal',
         startSerial: parsed.startSerial || 1,
-        script: parsed.script || 'latin',
+        script: parsed.script || 'latin', // Always default to latin to ensure clean state
         footerLeft: parsed.footerLeft || ['', '','Signature of the President of Incumbent Managing', 'Committee/PIC/Official Administrator/Adhoc Committee'],
         footerRight: parsed.footerRight || ['', '', 'Signature of the Registrar', '']
       };
@@ -22,13 +22,14 @@ export const getStoredSettings = (): AppSettings => {
     console.error('Error loading settings from localStorage:', error);
   }
   
+  // Return clean default settings
   return {
     pdfHeader: '',
     pdfSubHeader: '______________District, Registration No:',
     pdfPageTitle: 'Voters list of_____________________________________________Society,___________Village,__________Mandal,',
     pdfPaperSize: 'legal',
     startSerial: 1,
-    script: 'latin',
+    script: 'latin', // Always default to latin for clean state
     footerLeft: ['', '','Signature of the President of Incumbent Managing', 'Committee/PIC/Official Administrator/Adhoc Committee'],
     footerRight: ['', '', 'Signature of the Registrar', '']
   };
@@ -36,7 +37,13 @@ export const getStoredSettings = (): AppSettings => {
 
 export const storeSettings = (settings: AppSettings): void => {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    // Ensure clean storage of settings
+    const cleanSettings = {
+      ...settings,
+      // Ensure script is properly set
+      script: settings.script || 'latin'
+    };
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(cleanSettings));
   } catch (error) {
     console.error('Error saving settings to localStorage:', error);
   }
