@@ -20,33 +20,50 @@ const BASE_FONT = {
 const MIN_FONT = 7;
 
 /* ---------- 2 · Telugu Font Support ---------- */
-let teluguFontAvailable = false;
+let teluguFontLoaded = false;
 
-const initializeTeluguSupport = (pdf: jsPDF): boolean => {
+const loadTeluguFont = async (pdf: jsPDF): Promise<void> => {
+  if (teluguFontLoaded) return;
+  
   try {
-    // For now, we'll use Helvetica for Telugu text as well
-    // This ensures compatibility while maintaining functionality
-    // In a production environment, you would need to:
-    // 1. Download Noto Sans Telugu TTF file
-    // 2. Use jsPDF's font converter tool to generate a JS file
-    // 3. Import and register that converted font
+    // Fetch the Telugu font file from the public directory
+    const fontUrl = '/static/NotoSansTelugu-Regular.ttf';
+    const response = await fetch(fontUrl);
     
-    // Check if we can use basic Unicode support
-    pdf.setFont('helvetica', 'normal');
-    teluguFontAvailable = true;
-    return true;
+    if (!response.ok) {
+      throw new Error(`Failed to fetch font: ${response.status}`);
+    }
+    
+    const fontData = await response.arrayBuffer();
+    
+    // Convert ArrayBuffer to base64 string for jsPDF
+    const fontBase64 = btoa(
+      new Uint8Array(fontData).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+    
+    // Add the font to jsPDF's virtual file system
+    pdf.addFileToVFS('NotoSansTelugu-Regular.ttf', fontBase64);
+    
+    // Register the font with jsPDF
+    pdf.addFont('NotoSansTelugu-Regular.ttf', 'NotoSansTelugu', 'normal');
+    
+    teluguFontLoaded = true;
+    console.log('Telugu font loaded successfully');
   } catch (error) {
-    console.warn('Telugu font initialization failed, using fallback:', error);
-    teluguFontAvailable = false;
-    return false;
+    console.warn('Failed to load Telugu font, falling back to default:', error);
+    teluguFontLoaded = false;
   }
 };
 
 const setFont = (pdf: jsPDF, script: 'latin' | 'telugu', style: 'normal' | 'bold' = 'normal'): void => {
   try {
-    // Use Helvetica for both Latin and Telugu text
-    // This ensures consistent rendering without font loading issues
-    pdf.setFont('helvetica', style);
+    if (script === 'telugu' && teluguFontLoaded) {
+      // Use Telugu font for Telugu text
+      pdf.setFont('NotoSansTelugu', style === 'bold' ? 'normal' : 'normal'); // Telugu font only has normal weight
+    } else {
+      // Use Helvetica for Latin text or fallback
+      pdf.setFont('helvetica', style);
+    }
   } catch (error) {
     console.warn('Font setting failed, using default:', error);
     pdf.setFont('helvetica', 'normal');
@@ -73,8 +90,10 @@ export const generatePDF = async (
       ? 1
       : paperDim.height / BASE_HEIGHT;
 
-    /* 3-C. Initialize font support */
-    initializeTeluguSupport(pdf);
+    /* 3-C. Load Telugu font if needed */
+    if (settings.script === 'telugu') {
+      await loadTeluguFont(pdf);
+    }
 
     /* 3-D. Layout constants */
     const margin        = 10;
@@ -237,12 +256,14 @@ const addBox = async (
         pdf.addImage(v.photo, 'JPEG', pX + 1, pY + 1, photoW - 2, pH - 2);
       } catch (imageError) {
         console.warn('Image rendering failed:', imageError);
+        setFont(pdf, script, 'normal');
         pdf.setFontSize(f.photo);
         pdf.text('Photo', pX + photoW / 2, pY + pH / 2, {
           align: 'center',
         });
       }
     } else {
+      setFont(pdf, script, 'normal');
       pdf.setFontSize(f.photo);
       pdf.text('Photo', pX + photoW / 2, pY + pH / 2, {
         align: 'center',
@@ -252,35 +273,31 @@ const addBox = async (
     /* text */
     let tY = y + 5;
     const tX = x + snoW + 2;
+    
+    // Set font for text content
     setFont(pdf, script, 'bold');
     pdf.setFontSize(f.body);
 
-    // Safely render text with fallback for special characters
-    const safeText = (text: string): string => {
-      // For Telugu script, we might need to handle special characters
-      // For now, we'll ensure the text is properly encoded
-      return text || '';
-    };
-
-    pdf.text(`Admn. No: ${safeText(v.entryNumber)}`, tX, tY);
-    pdf.text(`Admn. Date: ${safeText(v.entryDate)}`, tX + textW, tY, { align: 'right' });
+    // Render text with proper Telugu font support
+    pdf.text(`Admn. No: ${v.entryNumber}`, tX, tY);
+    pdf.text(`Admn. Date: ${v.entryDate}`, tX + textW, tY, { align: 'right' });
     tY += lh;
 
     setFont(pdf, script, 'bold');
     pdf.setFontSize(f.name);
-    pdf.text(`Name: ${safeText(v.name)}`, tX, tY);
+    pdf.text(`Name: ${v.name}`, tX, tY);
     tY += lh;
 
     setFont(pdf, script, 'normal');
     pdf.setFontSize(f.body);
-    pdf.text(`Father/Husband Name: ${safeText(v.fatherHusbandName)}`, tX, tY);
+    pdf.text(`Father/Husband Name: ${v.fatherHusbandName}`, tX, tY);
     tY += lh;
 
-    pdf.text(`Village: ${safeText(v.village)}`, tX, tY);
+    pdf.text(`Village: ${v.village}`, tX, tY);
     tY += lh;
 
     pdf.text(
-      `Caste: ${safeText(v.caste)}  Age: ${safeText(v.age)}  Gender: ${safeText(v.gender)}`,
+      `Caste: ${v.caste}  Age: ${v.age}  Gender: ${v.gender}`,
       tX,
       tY
     );
