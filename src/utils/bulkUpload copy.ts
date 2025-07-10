@@ -92,137 +92,45 @@
    /* ================================================================
       3. ZIP PHOTO PARSER
       ================================================================ */
-  //  export const parsePhotosZip = async (
-  //    file: File,
-  //    onProgress: (p: number) => void
-  //  ): Promise<Map<string, string>> => {
-  //    const zip = new JSZip();
-  //    const map = new Map<string, string>();
+   export const parsePhotosZip = async (
+     file: File,
+     onProgress: (p: number) => void
+   ): Promise<Map<string, string>> => {
+     const zip = new JSZip();
+     const map = new Map<string, string>();
    
-  //    try {
-  //      const z = await zip.loadAsync(file);
-  //      const fileNames = Object.keys(z.files);
-  //      const total = fileNames.length;
+     try {
+       const z = await zip.loadAsync(file);
+       const fileNames = Object.keys(z.files);
+       const total = fileNames.length;
    
-  //      for (let i = 0; i < total; i++) {
-  //        const fname = fileNames[i];
-  //        const zFile = z.files[fname];
-  //        if (zFile.dir) continue;
+       for (let i = 0; i < total; i++) {
+         const fname = fileNames[i];
+         const zFile = z.files[fname];
+         if (zFile.dir) continue;
    
-  //        if (isImageFile(fname)) {
-  //          const entry = getEntryNumberFromFileName(fname);
-  //          if (entry) {
-  //            const blob = await zFile.async('blob');
-  //            map.set(entry, await blobToBase64(blob));
-  //          }
-  //        }
-  //        else{
-  //         errs.push({
-  //       row: -1,  // Indicating it's a photo error, no specific row
-  //       field: 'photo',
-  //       message: `Photo found with entry number ${entryNumber}, but no matching entry in Excel.`,
-  //       value: entryNumber,
-  //     });
-  //        }
+         if (isImageFile(fname)) {
+           const entry = getEntryNumberFromFileName(fname);
+           if (entry) {
+             const blob = await zFile.async('blob');
+             map.set(entry, await blobToBase64(blob));
+           }
+         }
    
-  //        onProgress(((i + 1) / total) * 100);
-  //        if (i % 50 === 0) await new Promise((r) => setTimeout(r, 10));
-  //      }
+         onProgress(((i + 1) / total) * 100);
+         if (i % 50 === 0) await new Promise((r) => setTimeout(r, 10));
+       }
    
-  //      return map;
-  //    } catch {
-  //      throw new Error('Failed to parse photos ZIP file');
-  //    }
-  //  };
+       return map;
+     } catch {
+       throw new Error('Failed to parse photos ZIP file');
+     }
+   };
    
-
-    export const parsePhotosZip = async (
-  file: File,
-  onProgress: (p: number) => void
-): Promise<Map<string, string>> => {
-  const zip = new JSZip();
-  const map = new Map<string, string>();
-  const errs: BulkUploadError[] = [];  // To collect errors related to non-image files
-
-  try {
-    const z = await zip.loadAsync(file);
-    const fileNames = Object.keys(z.files);
-    const total = fileNames.length;
-    
-    console.log(`Total files in ZIP: ${total}`);
-
-      for (let i = 0; i < total; i++) {
-      const fname = fileNames[i];
-      const zFile = z.files[fname];
-
-      // Skip directories
-      if (zFile.dir) {
-        console.log(`Skipping directory: ${fname}`);
-        continue; // Skip directories
-      }
-
-      // Log the filename
-
-
-      // Check if the file is an image
-      if (isImageFile(fname)) {
-        const entry = getEntryNumberFromFileName(fname);
-      
-
-        if (entry) {
-          if (map.has(entry)) {
-            // If entry number is already in the map, add an error to the errs array
-            errs.push({
-              row: -1,  // Indicating it's a photo error, no specific row
-              field: 'photo',
-              message: `Duplicate entry found: ${entry}. Photo already exists.`,
-              value: fname,
-            });
-            console.log(`Duplicate photo: ${fname} with entry number: ${entry}`);
-          } else {
-            // Add to map if not already there
-            const blob = await zFile.async('blob');
-            map.set(entry, await blobToBase64(blob));
-            console.log(`Added photo to map with entry number: ${entry}`);
-          }
-        } else {
-          console.log(`No valid entry number for file: ${fname}`);
-        }
-      } else {
-        // If it's not an image, add an error to the errs array
-        errs.push({
-          row: -1,  // Indicating it's a photo error, no specific row
-          field: 'photo',
-          message: `Non-image file found: ${fname}. Expected an image file.`,
-          value: fname,
-        });
-        console.log(`Non-image file: ${fname}`);
-      }
-
-      // Update progress
-      onProgress(((i + 1) / total) * 100);
-      if (i % 50 === 0) await new Promise((r) => setTimeout(r, 10));
-    }
-
-    // If there are any errors, you can handle them (e.g., report them)
-    if (errs.length > 0) {
-      generateErrorReport(errs); // Assuming this function generates the error report
-      console.log(`Found errors: ${errs.length}`);
-    }
-
-    console.log(`Map size: ${map.size}`);
-    return map;
-  } catch (error) {
-    console.error('Error while parsing ZIP file:', error);
-    throw new Error('Failed to parse photos ZIP file');
-  }
-};
-
-
    /* ================================================================
       4. VALIDATION + ERROR REPORT
       ================================================================ */
-   export const validateVoters = (voters: ParsedVoter[], photoMap: Map<string, string>): BulkUploadError[] => {
+   export const validateVoters = (voters: ParsedVoter[]): BulkUploadError[] => {
      const errs: BulkUploadError[] = [];
      const seen = new Set<string>();
    
@@ -240,18 +148,6 @@
          errs.push({ row: v.rowNumber, field: 'general', message: msg })
        );
      });
-
-     photoMap.forEach((photo, entryNumber) => {
-    const voterExists = voters.some((v) => v.entryNumber === entryNumber);
-    if (!voterExists) {
-      errs.push({
-        row: -1,  // Indicating it's a photo error, no specific row
-        field: 'photo',
-        message: `Photo found with entry number ${entryNumber}, but no matching entry in Excel.`,
-        value: entryNumber,
-      });
-    }
-  });
    
      return errs;
    };

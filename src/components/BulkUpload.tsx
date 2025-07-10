@@ -163,7 +163,7 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ onVotersUploaded, onLanguageDet
 
       // Step 4: Validate data
       setCurrentStep('Validating data...');
-      const validationErrors = validateVoters(votersWithPhotos);
+      const validationErrors = validateVoters(votersWithPhotos,photoMap);
       setErrors(validationErrors);
       setParsedVoters(votersWithPhotos);
       setProgress(90);
