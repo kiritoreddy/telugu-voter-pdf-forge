@@ -33,8 +33,8 @@ const VoterPreview: React.FC<VoterPreviewProps> = ({
   // Photos-first sorting with search filtering
   const { sortedVoters, filteredVoters } = useMemo(() => {
     // First, sort by photos-first (this is our canonical order)
-    const sorted = applyPhotosFirstSorting(voters);
-
+    //const sorted = applyPhotosFirstSorting(voters);
+    const sorted = voters;
     // Then apply search filter if there's a search term
     const filtered = searchTerm.trim()
       ? sorted.filter(v => v.entryNumber.toLowerCase().includes(searchTerm.toLowerCase()))
