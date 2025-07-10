@@ -89,7 +89,7 @@ export const generatePDF = async (
 
     try {
         /* 3-A. Apply photos-first sorting (same as Preview) */
-        const sortedVoters = applyPhotosFirstSorting(voters);
+        const sortedVoters = voters //applyPhotosFirstSorting(voters);
 
         /* 3-B. Paper & scale */
         const paperDim = settings.pdfPaperSize === 'a4'
