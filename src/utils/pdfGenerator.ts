@@ -133,8 +133,8 @@ async function createPdfForGroup(
         addHeader(pdf, settings, paperDim.width, font);
 
         const y0 = 5 + headerHeight;
-        for (let r = 0; r < rowsPerPage; r++) {
-            for (let c = 0; c < colsPerPage; c++) {
+        for (let c = 0; c < colsPerPage; c++) {
+            for (let r = 0; r < rowsPerPage; r++) {
                 const idx = p * perPage + r + c * rowsPerPage;
                 if (idx >= group.length) continue;
                 await addBox(
@@ -184,6 +184,8 @@ export const generatePDF = async (
         `voter-list-without-photos-${settings.pdfPaperSize}-${settings.script}.pdf`
     );
 };
+
+/* Helper functions (addHeader, addFooter, addBox, etc.) remain the same */
 
 /* Helper functions (addHeader, addFooter, addBox, etc.) remain the same */
 
