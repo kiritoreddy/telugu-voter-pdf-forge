@@ -80,112 +80,101 @@ const setFont = (pdf: jsPDF, script: 'latin' | 'telugu', style: 'normal' | 'bold
     }
 };
 
-/* ---------- 3 · Helper: Create PDF for Voters Group ---------- */
-async function createPdfForGroup(
-    group: Voter[],
-    settings: AppSettings,
-    filename: string
-): Promise<void> {
-    const paperDim = settings.pdfPaperSize === 'a4'
-        ? { width: 210, height: 297 }
-        : { width: 216, height: 356 };
-    const pdf = new jsPDF('p', 'mm', [paperDim.width, paperDim.height]);
-    const scale = settings.pdfPaperSize === 'legal'
-        ? 1
-        : paperDim.height / BASE_HEIGHT;
-
-    // fonts & layout
-    if (settings.script === 'telugu') {
-        await loadTeluguFont(pdf);
-        if (teluguFontLoaded) {
-            pdf.setFont('NotoSansTelugu', 'normal');
-            pdf.setTextColor(255, 255, 255); // White text (invisible)
-            pdf.setFontSize(1);
-            pdf.text('తెలుగు', 0, 0); // Telugu text to force embedding
-            pdf.setTextColor(0, 0, 0); // Reset to black
-        }
-    }
-
-    const margin = 10;
-    const headerHeight = 30 * scale;
-    const footerHeight = 25 * scale;
-    const rowsPerPage = 10;
-    const colsPerPage = 2;
-    const perPage = rowsPerPage * colsPerPage;
-    const contentHeight = paperDim.height - headerHeight - footerHeight - margin * 2;
-    const rowHeight = contentHeight / rowsPerPage;
-    const colWidth = (paperDim.width - margin * 2) / colsPerPage;
-    const lineHeight = rowHeight / 6;
-
-    const fontScale = rowHeight / BASE_ROW_HEIGHT;
-    const font = Object.fromEntries(
-        (Object.entries(BASE_FONT) as [keyof typeof BASE_FONT, number][]).map(([k, v]) => [
-            k,
-            Math.max(MIN_FONT, v * fontScale),
-        ])
-    ) as Record<keyof typeof BASE_FONT, number>;
-
-    const totalPages = Math.ceil(group.length / perPage);
-    let serial = 1;
-
-    for (let p = 0; p < totalPages; p++) {
-        if (p > 0) pdf.addPage();
-        addHeader(pdf, settings, paperDim.width, font);
-
-        const y0 = 5 + headerHeight;
-        for (let r = 0; r < rowsPerPage; r++) {
-            for (let c = 0; c < colsPerPage; c++) {
-                const idx = p * perPage + r + c * rowsPerPage;
-                if (idx >= group.length) continue;
-                await addBox(
-                    pdf,
-                    group[idx],
-                    margin + c * colWidth,
-                    y0 + r * rowHeight,
-                    colWidth,
-                    rowHeight,
-                    serial++,
-                    font,
-                    lineHeight,
-                    settings.script
-                );
-            }
-        }
-
-        addFooter(pdf, settings, paperDim, p + 1, totalPages, font);
-    }
-
-    pdf.save(filename);
-}
-
-/* ---------- 4 · Main PDF Splitter Function ---------- */
+/* ---------- 3 · Generate PDF with photos-first ordering ---------- */
 export const generatePDF = async (
     voters: Voter[],
     settings: AppSettings
 ): Promise<void> => {
     if (!voters.length) throw new Error('No voters to export');
 
-    // Apply your existing photo-first sort so the two groups preserve that ordering
-    const sorted = applyPhotosFirstSorting(voters);
+    try {
+        /* 3-A. Apply photos-first sorting (same as Preview) */
+        const sortedVoters = applyPhotosFirstSorting(voters);
 
-    const withPhotos = sorted.filter(v => !!v.photo);
-    const withoutPhotos = sorted.filter(v => !v.photo);
+        /* 3-B. Paper & scale */
+        const paperDim = settings.pdfPaperSize === 'a4'
+            ? { width: 210, height: 297 }
+            : { width: 216, height: 356 };
+        const pdf = new jsPDF('p', 'mm', [paperDim.width, paperDim.height]);
+        const scale = settings.pdfPaperSize === 'legal'
+            ? 1
+            : paperDim.height / BASE_HEIGHT;
 
-    // Create PDFs for each group
-    await createPdfForGroup(
-        withPhotos,
-        settings,
-        `voter-list-with-photos-${settings.pdfPaperSize}-${settings.script}.pdf`
-    );
+        /* 3-C. Load and embed Telugu font if needed */
+        if (settings.script === 'telugu') {
+            await loadTeluguFont(pdf);
 
-    await createPdfForGroup(
-        withoutPhotos,
-        settings,
-        `voter-list-without-photos-${settings.pdfPaperSize}-${settings.script}.pdf`
-    );
+            // Ensure font is properly embedded by using it immediately
+            if (teluguFontLoaded) {
+                pdf.setFont('NotoSansTelugu', 'normal');
+                // Add invisible text to force font embedding
+                pdf.setTextColor(255, 255, 255); // White text (invisible)
+                pdf.setFontSize(1);
+                pdf.text('తెలుగు', 0, 0); // Telugu text to force embedding
+                pdf.setTextColor(0, 0, 0); // Reset to black
+            }
+        }
+
+        /* 3-D. Layout constants */
+        const margin = 10;
+        const headerHeight = 30 * scale;
+        const footerHeight = 25 * scale;
+        const VOTERS_PER_ROW = 2;
+        const ROWS_PER_PAGE = 10;                 // 🔒 fixed
+        const VOTERS_PER_PAGE = VOTERS_PER_ROW * ROWS_PER_PAGE;
+
+        const contentHeight = paperDim.height - headerHeight - footerHeight - margin * 2;
+        const rowHeight = contentHeight / ROWS_PER_PAGE;               // auto-fit
+        const columnWidth = (paperDim.width - margin * 2) / VOTERS_PER_ROW;
+        const lineHeight = rowHeight / 6;                               // 5 lines + padding
+
+        /* 3-E. Scaled fonts */
+        const fontScale = rowHeight / BASE_ROW_HEIGHT;
+        const font = Object.fromEntries(
+            (Object.entries(BASE_FONT) as [keyof typeof BASE_FONT, number][])
+                .map(([k, v]) => [k, Math.max(MIN_FONT, v * fontScale)])
+        ) as Record<keyof typeof BASE_FONT, number>;
+
+        /* 3-F. Pagination with column-major ordering */
+        const totalPages = Math.ceil(sortedVoters.length / VOTERS_PER_PAGE);
+        for (let p = 0; p < totalPages; p++) {
+            if (p) pdf.addPage();
+            addHeader(pdf, settings, paperDim.width, font);
+
+            const startY = 5 + headerHeight;
+            for (let row = 0; row < ROWS_PER_PAGE; row++) {
+                for (let col = 0; col < VOTERS_PER_ROW; col++) {
+                    // Column-major index calculation
+                    const idx = p * VOTERS_PER_PAGE + row + col * ROWS_PER_PAGE;
+                    if (idx >= sortedVoters.length) continue;
+
+                    // Use shared helper for consistent serial numbering
+                    const serialNumber = getSerialNumber(idx, settings.startSerial);
+
+                    await addBox(
+                        pdf,
+                        sortedVoters[idx],
+                        margin + col * columnWidth,
+                        startY + row * rowHeight,
+                        columnWidth,
+                        rowHeight,
+                        serialNumber,
+                        font,
+                        lineHeight,
+                        settings.script
+                    );
+                }
+            }
+
+            addFooter(pdf, settings, paperDim, p + 1, totalPages, font);
+        }
+
+        pdf.save(`voter-list-${settings.pdfPaperSize}-${settings.script}.pdf`);
+    } catch (error) {
+        console.error('PDF generation failed:', error);
+        throw new Error(`PDF generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 };
-
-/* Helper functions (addHeader, addFooter, addBox, etc.) remain the same */
 
 /* ---------- 4 · Helpers ---------- */
 const addHeader = (
