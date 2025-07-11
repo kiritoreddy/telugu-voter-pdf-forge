@@ -1,6 +1,35 @@
+import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import { Voter, AppSettings } from '@/types/voter';
 import { getSerialNumber, applyPhotosFirstSorting } from './serialNumberHelper';
+
+// Function to generate Excel with photo availability information
+export const generateExcel = async (voters: Voter[], settings: AppSettings): Promise<void> => {
+    if (!voters.length) throw new Error('No voters to export');
+
+    // Adding a column for photo availability
+    const votersWithPhotosInfo = voters.map(voter => ({
+        entryNumber: voter.entryNumber,
+        entryDate: voter.entryDate,
+        name: voter.name,
+        fatherHusbandName: voter.fatherHusbandName,
+        village: voter.village,
+        caste: voter.caste,
+        age: voter.age,
+        gender: voter.gender,
+        photoAvailable: voter.photo ? 'Yes' : 'No', // Add photo availability info
+    }));
+
+    // Convert the data to a sheet
+    const ws = XLSX.utils.json_to_sheet(votersWithPhotosInfo);
+
+    // Create a workbook and append the sheet
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Voters');
+
+    // Save the file as Excel
+    XLSX.writeFile(wb, `voter-list-${settings.pdfPaperSize}-${settings.script}.xlsx`);
+};
 
 /* ---------- 1 · Baseline metrics (LEGAL reference) ---------- */
 const BASE_WIDTH = 216;   // mm
@@ -183,6 +212,8 @@ export const generatePDF = async (
         settings,
         `voter-list-without-photos-${settings.pdfPaperSize}-${settings.script}.pdf`
     );
+
+    await generateExcel(voters, settings);
 };
 
 /* Helper functions (addHeader, addFooter, addBox, etc.) remain the same */
