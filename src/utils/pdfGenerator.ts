@@ -62,7 +62,7 @@ const loadTeluguFont = async (pdf: jsPDF): Promise<void> => {
 
     try {
         // Fetch the Telugu font file from the public directory
-        const fontUrl = '/static/NotoSansTelugu-Regular.ttf';
+        const fontUrl = '/NotoSansTelugu-Regular.ttf';
         const response = await fetch(fontUrl);
 
         if (!response.ok) {
